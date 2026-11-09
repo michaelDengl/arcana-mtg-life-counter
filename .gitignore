@@ -1,0 +1,8 @@
+/build*/
+/.deps/
+/.tools/
+*.bmp
+.vscode/
+
+/saves/
+current-game.json*
