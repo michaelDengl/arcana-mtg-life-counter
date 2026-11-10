@@ -59,12 +59,13 @@ void AppUI::buildTools() {
   label(screen_,coinHeads_?"HEADS":"TAILS",95,94,170,&lv_font_montserrat_32,0xffffff);
   radialSector("Flip again",1,2,FlipCoin,0,gold,ToolIcon::Reset);
  }else if(view_==View::RollResult) {
+  const char* prefix=game_.state().format==GameFormat::TwoHeadedGiant?"T":"P";
   const auto& rolls=starterRoll_.rounds.back();unsigned count=static_cast<unsigned>(rolls.size())+2;
   auto* result=radialSector("",0,count,NoAction,0,0x246e88,ToolIcon::D20);lv_obj_clean(result);
-  label(screen_,starterRoll_.winner?"P"+std::to_string(starterRoll_.winner):"TIE",130,54,100,&lv_font_montserrat_32,ink);
+  label(screen_,starterRoll_.winner?std::string(prefix)+std::to_string(starterRoll_.winner):"TIE",130,54,100,&lv_font_montserrat_32,ink);
   label(screen_,starterRoll_.winner?"STARTS":"REROLL",144,99,72,&lv_font_montserrat_14,ink);
   for(unsigned i=0;i<rolls.size();++i){
-   auto* tile=radialSector("P"+std::to_string(rolls[i].player)+": "+std::to_string(rolls[i].die),i+1,count,NoAction,0,rolls[i].player==starterRoll_.winner?0x159870:0x326381,ToolIcon::D20);
+   auto* tile=radialSector(std::string(prefix)+std::to_string(rolls[i].player)+": "+std::to_string(rolls[i].die),i+1,count,NoAction,0,rolls[i].player==starterRoll_.winner?0x159870:0x326381,ToolIcon::D20);
    auto* title=lv_obj_get_child(tile,1);lv_obj_set_style_text_font(title,&tab_font,0);lv_obj_set_height(title,tab_font.line_height);
   }
   radialSector("Roll again",count-1,count,RollD20,0,violet,ToolIcon::Reset);

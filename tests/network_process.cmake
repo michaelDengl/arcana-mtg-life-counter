@@ -1,0 +1,7 @@
+execute_process(COMMAND "${NETWORK_TEST}" --lan-host COMMAND "${NETWORK_TEST}" --lan-client RESULTS_VARIABLE results OUTPUT_VARIABLE output ERROR_VARIABLE errors TIMEOUT 20)
+foreach(result IN LISTS results)
+ if(NOT result STREQUAL "0")
+  message(FATAL_ERROR "Separate-process LAN verification failed: ${results} ${output} ${errors}")
+ endif()
+endforeach()
+message(STATUS "Separate host and client processes discovered, joined and synchronized life")

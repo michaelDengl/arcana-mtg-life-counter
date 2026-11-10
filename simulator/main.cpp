@@ -4,6 +4,9 @@
 #include "ui/AppUI.hpp"
 #include "FileStorage.hpp"
 #include "SimulatorRandom.hpp"
+#include "LanTransport.hpp"
+#include "core/DeviceProfile.hpp"
+#include "core/Multiplayer.hpp"
 #include "core/SessionPersistence.hpp"
 #include <vector>
 #include <iostream>
@@ -51,12 +54,13 @@ void button(lv_obj_t* parent,const char* value,int x,int y,intptr_t action) {
 }
 }
 int main(int argc,char** argv) {
- bool smoke=false,resumeSmoke=false;std::string saveFile;
+ bool smoke=false,resumeSmoke=false;std::string saveFile,profileFile;
  for(int i=1;i<argc;++i) {
   std::string arg=argv[i];if(arg=="--smoke-test")smoke=true;
   else if(arg=="--resume-test"){smoke=true;resumeSmoke=true;}
+  else if(arg=="--profile-file" && i+1<argc)profileFile=argv[++i];
   else if(arg=="--save-file" && i+1<argc)saveFile=argv[++i];
-  else {std::cerr<<"Usage: mtg_simulator [--smoke-test | --resume-test] [--save-file path]\n";return 2;}
+  else {std::cerr<<"Usage: mtg_simulator [--smoke-test | --resume-test] [--save-file path] [--profile-file path]\n";return 2;}
  }
  SDL_SetMainReady();
  if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER)!=0) { std::cerr<<SDL_GetError();return 1; }
@@ -64,9 +68,12 @@ int main(int argc,char** argv) {
   if(smoke)saveFile="simulator-smoke-session.json";
   else {char* pref=SDL_GetPrefPath("Arcana","MTGLifeCounter");if(!pref){std::cerr<<SDL_GetError();SDL_Quit();return 1;}saveFile=std::string(pref)+"current-game.json";SDL_free(pref);}
  }
+ if(profileFile.empty()){auto path=std::filesystem::u8path(saveFile);profileFile=(path.parent_path()/(path.stem().string()+"-profile.json")).string();}
+ mtg::FileStorage profileStorage(std::filesystem::u8path(profileFile));mtg::DeviceProfile profile(&profileStorage);if(!profile.load())std::cerr<<profile.error()<<'\n';
+ mtg::LanTransport transport;mtg::Multiplayer multiplayer(game,profile,transport);
  mtg::FileStorage storage(std::filesystem::u8path(saveFile));mtg::SessionPersistence session(game,storage);persistence=&session;
  if(!session.load())std::cerr<<session.error()<<'\n';
- auto* window=SDL_CreateWindow("MTG Life Counter | Digital Twin 0.11.0",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,W,H,smoke?SDL_WINDOW_HIDDEN:SDL_WINDOW_SHOWN);
+ auto* window=SDL_CreateWindow("MTG Life Counter | Digital Twin 0.14.0",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,W,H,smoke?SDL_WINDOW_HIDDEN:SDL_WINDOW_SHOWN);
  if(!window) { std::cerr<<SDL_GetError();SDL_Quit();return 1; }
  renderer=SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);
  texture=renderer?SDL_CreateTexture(renderer,SDL_PIXELFORMAT_ARGB8888,SDL_TEXTUREACCESS_STREAMING,W,H):nullptr;
@@ -84,10 +91,10 @@ int main(int argc,char** argv) {
  card(18,120,243,250);card(18,381,243,186);card(758,120,264,330);card(758,461,264,106);
  text(root,"ARCANA / LIFE COUNTER",32,28,0x00d8ff);
  text(root,"DESKTOP DIGITAL TWIN",32,54,0x81a5b7);
- text(root,"YOUR COMMANDER SESSION",32,136,0x00d8ff);
+ text(root,"YOUR ARCANA SESSION",32,136,0x00d8ff);
  auto* stats=text(root,"",32,173);
  lv_obj_set_width(stats,216);lv_label_set_long_mode(stats,LV_LABEL_LONG_WRAP);
- text(root,"P1 life / opponent damage\nApp 0.11.0 / SDL2",32,318,0x81a5b7);
+ text(root,"P1 life / named network peers\nApp 0.14.0 / SDL2",32,318,0x81a5b7);
  text(root,"INPUT",32,398,0x00d8ff);
  text(root,"Wheel / arrows: adjust\nTap a tracker to edit\nTab: trackers\nCtrl+Z / Y: undo / redo\nP: power / R: new game\nEsc: close",32,431);
  auto* bezel=lv_obj_create(root);lv_obj_set_pos(bezel,290,91);lv_obj_set_size(bezel,420,420);
@@ -96,7 +103,7 @@ int main(int argc,char** argv) {
  lv_obj_remove_flag(bezel,LV_OBJ_FLAG_SCROLLABLE);
  device=lv_obj_create(root);lv_obj_set_pos(device,320,121);lv_obj_set_size(device,360,360);
  lv_obj_set_style_border_width(device,0,0);lv_obj_set_style_pad_all(device,0,0);
- mtg::SimulatorRandom random;mtg::AppUI ui(game,hardware,device,random);app=&ui;
+ mtg::SimulatorRandom random;mtg::AppUI ui(game,hardware,device,random,&profile,&multiplayer);app=&ui;
 text(root,"KNOB TOUCH 1.8  /  DIGITAL TWIN",365,536,0x81a5b7);
  text(root,"HARDWARE CONTROLS",780,136,0x00d8ff);
  button(root,"Clockwise  +",780,174,1);button(root,"Counterclockwise  -",780,228,-1);
@@ -137,13 +144,16 @@ text(root,"LATEST EVENT",780,477,0x00d8ff);logLabel=text(root,"Ready",780,506);
     if(frames==4)pointer(true,500,358);if(frames==10)pointer(false,500,358);
    }else {
    if(frames==4)pointer(true,500,292);if(frames==10)pointer(false,500,292);
-   if(frames==16)pointer(true,446,407);if(frames==22)pointer(false,446,407);
-   if(frames==28){SDL_Event e{};e.type=SDL_MOUSEWHEEL;e.wheel.y=7;SDL_PushEvent(&e);}
-   if(frames==34)pointer(true,870,195);if(frames==40)pointer(false,870,195);
-   if(frames==46)pointer(true,355,262);if(frames==52)pointer(false,355,262);
-   if(frames==54){SDL_Event e{};e.type=SDL_KEYDOWN;e.key.keysym.sym=SDLK_RIGHT;SDL_PushEvent(&e);}
+   if(frames==16)pointer(true,500,211);if(frames==22)pointer(false,500,211);
+   if(frames==28)pointer(true,500,201);if(frames==34)pointer(false,500,201);
+   if(frames==40)pointer(true,500,421);if(frames==46)pointer(false,500,421);
+   if(frames==52){SDL_Event e{};e.type=SDL_MOUSEWHEEL;e.wheel.y=7;SDL_PushEvent(&e);}
+   if(frames==58)pointer(true,870,195);if(frames==64)pointer(false,870,195);
+   if(frames==70)pointer(true,355,262);if(frames==76)pointer(false,355,262);
+   if(frames==82){SDL_Event e{};e.type=SDL_KEYDOWN;e.key.keysym.sym=SDLK_RIGHT;SDL_PushEvent(&e);}
+
    }
-   if(frames==62)running=false;
+   if(frames==94)running=false;
   }
   SDL_Delay(smoke?1:5);
  }

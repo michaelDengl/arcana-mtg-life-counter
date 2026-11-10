@@ -14,11 +14,18 @@ bool validName(const std::string& name) {
 }
 std::string change(std::int64_t delta) { return (delta > 0 ? "+" : "") + std::to_string(delta); }
 }
+const char* formatName(GameFormat format) {
+ static const char* names[]{"Commander","Classic","2HG","Brawl","Limited"};auto index=static_cast<unsigned>(format);return index<5?names[index]:"Commander";
+}
+std::int64_t startingLife(GameFormat format) {return format==GameFormat::Commander||format==GameFormat::TwoHeadedGiant?40:format==GameFormat::Brawl?25:20;}
+bool usesCommanderDamage(GameFormat format) {return format==GameFormat::Commander||format==GameFormat::TwoHeadedGiant;}
 const char* counterName(Counter counter) {
  static const char* names[]{"POISON", "ENERGY", "EXPERIENCE", "RAD", "STORM", "CUSTOM", "TREASURES", "SHIELD"};
  const auto i=static_cast<unsigned>(counter); return i<counterCount ? names[i] : "COUNTER";
 }
 bool GameState::commit(GameSnapshot next, std::string description) {
+ if(next.format==GameFormat::TwoHeadedGiant){next.opponentLife[0]=next.player.life;for(unsigned seat=3;seat<next.playerCount;seat+=2)next.opponentLife[seat-1]=next.opponentLife[seat-2];}
+
  if(actionTime_) {
   while(!recent_.empty() && (*actionTime_<recent_.front().time || *actionTime_-recent_.front().time>5000))recent_.pop_front();
   recent_.push_back({state_,*actionTime_});
@@ -29,11 +36,16 @@ bool GameState::commit(GameSnapshot next, std::string description) {
  history_.push_back({state_,next,std::move(description)});
  state_=std::move(next); cursor_=history_.size(); ++revision_; return true;
 }
-bool GameState::startNewGame(unsigned players) {
- if(players<1 || players>6)return false;
- GameSnapshot next;next.playerCount=players;next.active=true;next.sources.clear();next.nextSourceId=1;
- for(unsigned owner=2;owner<=players;++owner)
-  next.sources.push_back({next.nextSourceId++,owner,"P"+std::to_string(owner)+" / COMMANDER A",0,0});
+bool GameState::startNewGame(unsigned players,GameFormat format) {
+ if(players<1 || players>(format==GameFormat::TwoHeadedGiant?12u:6u)||static_cast<unsigned>(format)>=static_cast<unsigned>(GameFormat::Count))return false;
+ if(format==GameFormat::TwoHeadedGiant&&(players<4||players%2))return false;
+ if((format==GameFormat::Brawl||format==GameFormat::Limited)&&players!=2)return false;
+ GameSnapshot next;next.format=format;next.player.life=startingLife(format);next.opponentLife.fill(startingLife(format));
+ if(format==GameFormat::TwoHeadedGiant){for(unsigned seat=0;seat<next.teams.size();++seat)next.teams[seat]=seat/2;next.poisonLimit=15;}
+ next.playerCount=players;next.active=true;next.sources.clear();next.nextSourceId=1;
+ for(unsigned owner=format==GameFormat::TwoHeadedGiant?3:2;usesCommanderDamage(format)&&owner<=players;++owner)
+  for(unsigned recipient=1;recipient<=(format==GameFormat::TwoHeadedGiant?2u:1u);++recipient)
+   next.sources.push_back({next.nextSourceId++,owner,"P"+std::to_string(owner)+" / COMMANDER A",0,0,recipient});
  state_=std::move(next);history_.clear();recent_.clear();cursor_=0;++revision_;return true;
 }
 void GameState::endGame() {
@@ -41,6 +53,7 @@ void GameState::endGame() {
  state_.active=false;history_.clear();recent_.clear();cursor_=0;++revision_;
 }
 bool GameState::adjustCommanderDamage(std::uint32_t id,std::int64_t delta,bool subtractLife) {
+ if(!usesCommanderDamage(state_.format))return false;
  if(delta>0)return applyCommanderDamage(id,delta,subtractLife);
  if(delta==0 || delta==std::numeric_limits<std::int64_t>::min())return false;
  auto next=state_;auto it=std::find_if(next.sources.begin(),next.sources.end(),[id](const auto& s){return s.id==id;});
@@ -85,6 +98,23 @@ bool GameState::adjustLife(std::int64_t delta) {
  auto next=state_; if(!delta || !sum(next.player.life,delta,next.player.life)) return false;
  return commit(std::move(next),"Life " + change(delta));
 }
+std::int64_t GameState::life(unsigned owner) const {
+ if(owner<1||owner>state_.playerCount)return 0;
+ return owner==1?state_.player.life:state_.opponentLife[owner-2];
+}
+bool GameState::synchronizeLocal(std::int64_t life,const std::array<std::int64_t,counterCount>& counters) {
+ for(auto value:counters)if(value<0)return false;
+ if(state_.player.life==life&&state_.player.counters==counters)return true;
+ auto next=state_;next.player.life=life;next.player.counters=counters;auto savedTime=actionTime_;actionTime_.reset();commit(std::move(next),"Network / team update");actionTime_=savedTime;recent_.clear();return true;
+}
+bool GameState::adjustPlayerLife(unsigned owner,std::int64_t delta) {
+ if(owner<1||owner>state_.playerCount||!delta)return false;
+ if(state_.teams[owner-1]==state_.teams[0])return adjustLife(delta);
+ auto next=state_;std::int64_t value;
+ if(!sum(life(owner),delta,value))return false;
+ for(unsigned seat=2;seat<=next.playerCount;++seat)if(next.teams[seat-1]==next.teams[owner-1])next.opponentLife[seat-2]=value;
+ return commit(std::move(next),"P"+std::to_string(owner)+" life "+change(delta));
+}
 bool GameState::adjustCounter(Counter counter, std::int64_t delta) {
  auto i=static_cast<unsigned>(counter); if(i>=counterCount || !delta) return false;
  auto next=state_; auto& value=next.player.counters[i];
@@ -105,6 +135,7 @@ const CommanderSource* GameState::source(std::uint32_t id) const {
  return nullptr;
 }
 bool GameState::applyCommanderDamage(std::uint32_t id,std::int64_t amount,bool subtractLife) {
+ if(!usesCommanderDamage(state_.format))return false;
  if(amount<=0) return false;
  auto next=state_;
  auto it=std::find_if(next.sources.begin(),next.sources.end(),[id](const auto& s){return s.id==id;});
@@ -116,10 +147,13 @@ bool GameState::applyCommanderDamage(std::uint32_t id,std::int64_t amount,bool s
  return commit(std::move(next),it->name+" +"+std::to_string(amount)+(subtractLife?" / life":" / record"));
 }
 bool GameState::addSource(unsigned owner) {
+ if(!usesCommanderDamage(state_.format)||(state_.format==GameFormat::TwoHeadedGiant&&owner<3))return false;
  if(owner<1 || owner>state_.playerCount || state_.nextSourceId==std::numeric_limits<std::uint32_t>::max()) return false;
- auto next=state_;unsigned count=0;for(const auto& s:next.sources) if(s.owner==owner) ++count;
+ auto next=state_;unsigned count=0;for(const auto& s:next.sources) if(s.owner==owner&&s.recipient==1) ++count;
  auto suffix=count<26 ? std::string(1,static_cast<char>('A'+count)) : std::to_string(count+1);
- next.sources.push_back({next.nextSourceId++,owner,"P"+std::to_string(owner)+" / COMMANDER "+suffix,0});
+ if(next.format==GameFormat::TwoHeadedGiant&&next.nextSourceId>=std::numeric_limits<std::uint32_t>::max()-1)return false;
+ for(unsigned recipient=1;recipient<=(next.format==GameFormat::TwoHeadedGiant?2u:1u);++recipient)
+  next.sources.push_back({next.nextSourceId++,owner,"P"+std::to_string(owner)+" / COMMANDER "+suffix,0,0,recipient});
  return commit(std::move(next),"Added commander source");
 }
 bool GameState::renameSource(std::uint32_t id,const std::string& name) {
@@ -170,6 +204,7 @@ bool GameState::newTurn() {
 }
 bool GameState::poisonWarning() const { return state_.player.counters[0]>=state_.poisonLimit; }
 bool GameState::commanderWarning() const {
+ if(!usesCommanderDamage(state_.format))return false;
  for(const auto& s:state_.sources) if(s.damage>=21) return true;return false;
 }
 bool GameState::undo() { if(!canUndo()) return false;if(!recent_.empty())recent_.pop_back();state_=history_[--cursor_].before;++revision_;return true; }
@@ -180,9 +215,9 @@ bool GameState::redo() { if(!canRedo()) return false;
  }
  state_=history_[cursor_++].after;++revision_;return true; }
 void GameState::reset() {
- auto next=state_;next.player.life=40;next.player.counters.fill(0);
+ auto next=state_;next.player.life=startingLife(next.format);next.opponentLife.fill(startingLife(next.format));next.player.counters.fill(0);
  next.player.monarch=next.player.initiative=next.player.cityBlessing=false;
  for(auto& s:next.sources){s.damage=0;s.lifeLinkedDamage=0;}for(auto& c:next.commanders)c.casts=0;
- next.dayNight=DayNight::Neither;commit(std::move(next),"New game / 40 life");
+ next.dayNight=DayNight::Neither;commit(std::move(next),"New game / "+std::to_string(startingLife(state_.format))+" life");
 }
 }

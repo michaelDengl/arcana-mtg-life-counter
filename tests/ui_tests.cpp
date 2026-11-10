@@ -1,6 +1,7 @@
 #include "lvgl.h"
 #include "ui/AppUI.hpp"
 #include "SimulatorHardware.hpp"
+#include "third_party/json.hpp"
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -20,6 +21,8 @@ public:
   if(index>=values.size()||values[index]<lower||values[index]>upper){std::cerr<<"Invalid random test sequence";std::exit(1);}return values[index++];
  }
 };
+class ProfileMemory final:public mtg::IStorage {public:std::string value;bool load(std::string& data,std::string&)override{data=value;return true;}bool save(const std::string& data,std::string&)override{value=data;return true;}};
+class UIWire final:public mtg::IPeerTransport {public:std::vector<mtg::PeerPacket> incoming,sent;std::string empty;bool send(const std::string& endpoint,const std::string& data)override{sent.push_back({endpoint,data});return true;}std::vector<mtg::PeerPacket> receive()override{auto result=std::move(incoming);incoming.clear();return result;}const std::string& error()const override{return empty;}};
 std::vector<uint32_t> pixels(size*size);
 void check(bool condition,const std::string& message) {
  if(!condition){std::cerr<<"UI: "<<message<<'\n';std::exit(1);}
@@ -78,11 +81,11 @@ int main() {
  auto* continueLabel=find(lv_screen_active(),"Continue");
  check(continueLabel && lv_obj_has_state(lv_obj_get_parent(continueLabel),LV_STATE_DISABLED),"Continue disabled without unfinished game");
  rotate(100);check(!game.state().active && game.player().life==40,"startup rotary cannot edit game");
- click("New game");check(find(lv_screen_active(),"4-Players"),"four players by default");screenshot("ui-setup.bmp");
+ click("New game");click("SINGLE ARCANA");screenshot("ui-formats.bmp");click("Commander");check(find(lv_screen_active(),"4-Players"),"four players by default");screenshot("ui-setup.bmp");
  rotate(100);check(find(lv_screen_active(),"6-Players"),"setup clamps at six");
- rotate(-100);check(find(lv_screen_active(),"1-Players"),"setup clamps at one");
+ rotate(-100);check(find(lv_screen_active(),"2-Players"),"setup clamps at two");
  click("Back");check(!game.state().active,"setup Back does not start a game");
- click("New game");click("Confirm");check(game.state().active && game.state().playerCount==4,"confirmed four-player match");
+ click("Commander");click("Confirm");check(game.state().active && game.state().playerCount==4,"confirmed four-player match");
  check(!find(lv_screen_active(),"P1") && find(lv_screen_active(),"P4") && !find(lv_screen_active(),"P5"),"tabs match selected player count");screenshot("ui-home.bmp");
  // Regression: the whole top segment must start at the divider, not merely change color there.
  bool strayStroke=false;
@@ -147,7 +150,7 @@ int main() {
  click(LV_SYMBOL_SETTINGS);click("End Game");click("Back");check(game.state().active&&find(lv_screen_active(),"Brightness"),"cancel End Game returns to gear menu");
  click("End Game");click("End game");check(!game.state().active,"explicitly ended match");
  continueLabel=find(lv_screen_active(),"Continue");check(continueLabel&&lv_obj_has_state(lv_obj_get_parent(continueLabel),LV_STATE_DISABLED),"Continue disabled after End game");screenshot("ui-ended.bmp");
- click("New game");rotate(2);click("Confirm");screenshot("ui-six-players.bmp");check(game.state().playerCount==6&&find(lv_screen_active(),"P6"),"six-player tabs");screenshot("ui-six-players.bmp");
+ click("New game");click("SINGLE ARCANA");click("Commander");rotate(2);click("Confirm");screenshot("ui-six-players.bmp");check(game.state().playerCount==6&&find(lv_screen_active(),"P6"),"six-player tabs");screenshot("ui-six-players.bmp");
  click(LV_SYMBOL_SETTINGS);click("Brightness");rotate(-1000);check(hardware.brightness()==0&&find(lv_screen_active(),"0%"),"brightness minimum");rotate(1000);check(hardware.brightness()==100&&find(lv_screen_active(),"100%"),"brightness maximum");rotate(-35);check(hardware.brightness()==65,"brightness encoder adjustment");click("+");check(hardware.brightness()==66,"brightness plus button");click("-");check(hardware.brightness()==65,"brightness minus button");clickAt(180,122);check(hardware.brightness()>=49&&hardware.brightness()<=51,"brightness touch slider");hardware.setBrightness(65);tick();screenshot("ui-brightness.bmp");click("Back");check(find(lv_screen_active(),"Flip Coin"),"brightness Back returns one step");click("Back");hardware.setBrightness(100);
  auto beforeTools=game.serialize();click(LV_SYMBOL_SETTINGS);screenshot("ui-tools.bmp");click("Flip Coin");check(find(lv_screen_active(),"HEADS"),"heads result from injected randomness");screenshot("ui-coin.bmp");
  click("Flip again");check(find(lv_screen_active(),"TAILS"),"tails result");click("Back");click("Back");
@@ -155,7 +158,8 @@ int main() {
  check(game.serialize()==beforeTools,"random tools do not mutate match stats");
  game.adjustLife(-5);game.adjustCounter(mtg::Counter::Treasure,7);game.adjustCounter(mtg::Counter::Poison,3);tick();
  click(LV_SYMBOL_SETTINGS);click("New Game");screenshot("ui-reset-confirm.bmp");click("No");check(game.player().life==35&&game.player().counters[6]==7,"No preserves match");
- click("New Game");click("Yes");check(game.state().playerCount==6&&game.player().life==40&&game.player().counters[6]==0&&game.player().counters[0]==0,"Yes resets current player count and stats");
+ auto preservedMatch=game.serialize();click("New Game");click("Yes");click("SINGLE ARCANA");click("Classic");click("Back");click("Back");click("Back");check(game.serialize()==preservedMatch&&find(lv_screen_active(),"New Game"),"cancel format setup preserves current match");
+ click("New Game");click("Yes");click("SINGLE ARCANA");click("Commander");rotate(2);click("Confirm");check(game.state().playerCount==6&&game.player().life==40&&game.player().counters[6]==0&&game.player().counters[0]==0,"Yes resets current player count and stats");
  game.startNewGame(1);ui.goHome();tick();check(!find(lv_screen_active(),"P1")&&!find(lv_screen_active(),"P2")&&find(lv_screen_active(),LV_SYMBOL_SETTINGS),"solo layout has no opponent tabs");
  game.startNewGame(4);ui.goHome();tick();rotate(-5);rotate(-5);
  check(game.player().life==30&&find(lv_screen_active(),"Undo -10"),"two -5 rotations aggregate on main Undo");screenshot("ui-adjustments-home.bmp");
@@ -215,6 +219,29 @@ int main() {
  hardware.setBattery(50,true);tick();screenshot("ui-battery-charging.bmp");
  clickAt(180,139);check(game.player().life==41,"battery overlay leaves underlying life touch active");
  hardware.setBattery(75);tick();
+ for(auto entry:std::vector<std::pair<const char*,std::int64_t>>{{"Classic",20},{"Brawl",25},{"Limited",20}}){
+  game.endGame();ui.showStartup();tick(12);check(find(lv_screen_active(),"LIFE COUNTER")&&!find(lv_screen_active(),"COMMANDER LIFE COUNTER"),"startup title has no Commander prefix");
+  click("New game");click("SINGLE ARCANA");click(entry.first);check(find(lv_screen_active(),"2-Players"),"noncommander preset defaults to two players");click("Confirm");tick(12);
+  check(game.player().life==entry.second&&game.life(2)==entry.second&&!game.commanderWarning(),"preset starts both players at correct HP");
+  screenshot((std::string("ui-")+entry.first+"-home.bmp").c_str());
+  click("P2");check(find(lv_screen_active(),"P2 / LIFE")&&!find(lv_screen_active(),"LIMIT 21"),"noncommander opponent menu edits life");
+  rotate(-3);click("+");check(game.life(2)==entry.second-2&&game.player().life==entry.second,"opponent life changes independently");
+  screenshot((std::string("ui-")+entry.first+"-opponent.bmp").c_str());click("Back");
+  auto stored=game.serialize();mtg::GameState reloaded;check(reloaded.deserialize(stored)&&reloaded.life(2)==entry.second-2&&reloaded.state().format==game.state().format,"noncommander opponent HP survives recovery");
+  ui.showStartup();tick();click("Continue");click("P2");check(find(lv_screen_active(),std::to_string(entry.second-2)),"Continue restores opponent life menu");click("Back");
+  game.reset();tick();check(game.life(2)==entry.second&&game.player().life==entry.second,"reset restores both starting life totals");
+ }
+ game.endGame();ui.showStartup();tick();click("New game");click("SINGLE ARCANA");click("2HG");check(find(lv_screen_active(),"2 Teams / 4P"),"2HG shows team setup");rotate(100);check(find(lv_screen_active(),"6 Teams / 12P"),"team setup clamps at six teams");rotate(-100);check(find(lv_screen_active(),"2 Teams / 4P"),"team setup clamps at two teams");click("Confirm");tick(12);
+ check(game.state().playerCount==4&&game.state().poisonLimit==15&&!find(lv_screen_active(),"P2")&&find(lv_screen_active(),"P3")&&find(lv_screen_active(),"P4"),"2HG has fixed teams and enemy-only tabs");
+ game.adjustPlayerLife(2,-3);tick();check(game.player().life==37&&game.life(2)==37,"teammates share life");
+ click("P3");check(find(lv_screen_active(),"P3 / CMD"),"2HG retains commander damage");rotate(4);check(game.player().life==33&&game.life(2)==33,"2HG linked damage reduces shared life");click("To P1");check(find(lv_screen_active(),"To P2"),"2HG switches the commander damage recipient");rotate(2);check(game.source(1)->damage==4&&game.source(2)->damage==2&&game.life(1)==31&&game.life(2)==31,"2HG damage kept separate by recipient while sharing life");screenshot("ui-2HG-opponent.bmp");click("Back");
+ game.adjustCounter(mtg::Counter::Poison,14);check(!game.poisonWarning(),"2HG survives fourteen poison");game.adjustCounter(mtg::Counter::Poison,1);check(game.poisonWarning(),"2HG poison threshold fifteen");
+ game.endGame();ui.showStartup();tick();click("New game");click("SINGLE ARCANA");click("2HG");click("+");check(find(lv_screen_active(),"3 Teams / 6P"),"team plus adds two players");rotate(3);check(find(lv_screen_active(),"6 Teams / 12P"),"six-team setup");screenshot("ui-6-teams-setup.bmp");click("Confirm");tick(12);
+ check(game.state().playerCount==12&&find(lv_screen_active(),"P12"),"twelve-player game includes last enemy tile");screenshot("ui-6-teams-home.bmp");
+ for(unsigned owner=3;owner<=12;++owner){double angle=(210+(owner-3+0.5)*12)*3.141592653589793/180;clickAt(static_cast<int>(std::round(180+160*std::cos(angle))),static_cast<int>(std::round(180+160*std::sin(angle))));check(find(lv_screen_active(),"P"+std::to_string(owner)+" / CMD"),"all ten enemy tiles open their own radial menu");click("Back");}
+ game.adjustPlayerLife(12,-5);check(game.life(11)==35&&game.life(12)==35,"sixth team shares independent life");ui.showStartup();tick();click("Continue");check(game.state().playerCount==12&&find(lv_screen_active(),"P12"),"Continue restores six teams");
+ random.values={1,2,3,4,5,20};random.index=0;click(LV_SYMBOL_SETTINGS);click("Roll");check(find(lv_screen_active(),"T6"),"starter roll supports all six teams");screenshot("ui-6-teams-roll.bmp");click("Back");click("Back");
+ game.startNewGame(4);ui.goHome();tick(12);
  ui.openTrackers();ui.update();lv_obj_update_layout(lv_screen_active());auto* transitionTitle=find(lv_screen_active(),"TRACKERS");
  check(transitionTitle&&lv_obj_get_style_opa(transitionTitle,0)==0,"navigation starts a content fade");
  check(lv_obj_get_style_opa(lv_obj_get_child(lv_screen_active(),0),0)==255,"outer ring stays opaque during transition");
@@ -224,5 +251,21 @@ int main() {
  ui.goHome();tick(12);auto* heart=find(lv_screen_active(),"\xef\x80\x84");game.adjustLife(1);tick();check(heart&&lv_obj_get_style_opa(heart,0)==255,"life adjustments remain instant");
  ui.openTrackers();ui.update();ui.goHome();tick(12);heart=find(lv_screen_active(),"\xef\x80\x84");check(heart&&lv_obj_get_style_opa(heart,0)==255,"rapid navigation cancels the previous transition");
  ui.openTrackers();ui.update();hardware.togglePower();ui.update();lv_obj_update_layout(lv_screen_active());transitionTitle=find(lv_screen_active(),"TRACKERS");check(transitionTitle&&lv_obj_get_style_opa(transitionTitle,0)==255,"power off cancels the transition");hardware.togglePower();
+ ProfileMemory profileMemory;mtg::DeviceProfile identity(&profileMemory);UIWire wire;mtg::Multiplayer networking(game,identity,wire);
+ game.endGame();mtg::AppUI multiUI(game,hardware,device,random,&identity,&networking);app=&multiUI;tick(12);
+ click("New game");screenshot("ui-arcana-mode.bmp");click("MULTI ARCANA");
+ for(const char* key:{"A","L","I","C","E"})click(key);check(find(lv_screen_active(),"ALICE"),"name keyboard composes a name");screenshot("ui-name-keyboard.bmp");click("OK");
+ mtg::DeviceProfile rebooted(&profileMemory);check(rebooted.load()&&rebooted.name()=="ALICE"&&rebooted.id()==identity.id(),"saved name survives a new profile reader");screenshot("ui-host-join.bmp");click("Join");check(find(lv_screen_active(),"Refresh"),"join opens discovery screen");
+ using Json=nlohmann::json;const std::string bobId(32,'b');
+ wire.incoming.push_back({"remote",Json{{"v",1},{"t","advert"},{"game","bob-game"},{"name","BOB"},{"format",0},{"capacity",4},{"joined",1},{"started",false}}.dump()});tick(12);check(find(lv_screen_active(),"BOB"),"host name appears in browser");screenshot("ui-discovered-games.bmp");click("BOB");
+ auto networkState=[&](unsigned seq,bool started,int bobLife){return Json{{"v",1},{"t","state"},{"game","bob-game"},{"seq",seq},{"format",0},{"capacity",4},{"started",started},{"members",Json::array({Json{{"id",bobId},{"name","BOB"},{"seat",1},{"life",bobLife},{"counters",std::array<int,8>{}},{"ack",0},{"online",true}},Json{{"id",identity.id()},{"name","ALICE"},{"seat",2},{"life",40},{"counters",std::array<int,8>{}},{"ack",0},{"online",true}}})}}.dump();};
+ wire.incoming.push_back({"remote",networkState(1,false,40)});tick(12);check(find(lv_screen_active(),"Waiting"),"joined guest waits for host start");screenshot("ui-network-lobby.bmp");
+ wire.incoming.push_back({"remote",networkState(2,true,40)});tick(12);check(find(lv_screen_active(),"BOB")&&!find(lv_screen_active(),"P2"),"registered name replaces player number");screenshot("ui-multi-home.bmp");
+ click("BOB");check(find(lv_screen_active(),"Synced"),"remote player life is read-only");rotate(5);check(game.player().life==40&&networking.opponents()[0].life==40,"guest cannot edit another player's life");
+ wire.incoming.push_back({"remote",networkState(3,true,32)});tick(12);check(find(lv_screen_active(),"32"),"remote life refreshes in player menu");screenshot("ui-multi-opponent.bmp");click("Back");
+ click(LV_SYMBOL_SETTINGS);click("New Game");click("Yes");click("SINGLE ARCANA");click("Commander");click("Confirm");check(identity.name()=="ALICE"&&!networking.attached(),"new single game preserves identity and leaves network");
+ click(LV_SYMBOL_SETTINGS);click("New Game");click("Yes");click("MULTI ARCANA");check(find(lv_screen_active(),"ALICE"),"name entry remembers saved name");click("OK");click("Host");click("Classic");click("Confirm");check(networking.hosting()&&find(lv_screen_active(),"Start game"),"host configures a real lobby");click("Start game");check(networking.started()&&find(lv_screen_active(),"P2"),"host starts with one device and displays an open slot");click("P2");check(find(lv_screen_active(),"Open slot"),"unclaimed peer has a clear placeholder screen");click("+");check(networking.opponents()[0].life==21&&game.player().life==20,"host tracks a player without an Arcana");screenshot("ui-open-network-slot.bmp");click("Back");
+ wire.incoming.push_back({"visitor",Json{{"v",1},{"t","find"}}.dump()});tick();std::string hostedId;for(const auto& packet:wire.sent){auto value=Json::parse(packet.data);if(value["t"]=="advert")hostedId=value["game"].get<std::string>();}check(!hostedId.empty(),"host advertises its lobby");
+ wire.incoming.push_back({"guest",Json{{"v",1},{"t","join"},{"game",hostedId},{"id",std::string(32,'c')},{"name","CAROL"}}.dump()});tick(12);check(find(lv_screen_active(),"CAROL")&&!find(lv_screen_active(),"P2")&&game.player().life==20&&networking.opponents()[0].life==21,"late join replaces the placeholder while preserving tracked HP");screenshot("ui-late-joined-player.bmp");
  lv_deinit();std::cout<<"All round-screen counter interaction checks passed\n";
 }

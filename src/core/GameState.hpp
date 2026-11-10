@@ -6,6 +6,9 @@
 namespace mtg {
 struct GameSnapshot {
  Player player;
+ GameFormat format=GameFormat::Commander;
+ std::array<std::int64_t,11> opponentLife{{40,40,40,40,40,40,40,40,40,40,40}};
+ std::array<unsigned,12> teams{{0,1,2,3,4,5,6,7,8,9,10,11}};
  unsigned playerCount = 4;
  bool active = false;
  std::array<Counter,2> shortcuts{{Counter::Treasure,Counter::Poison}};
@@ -21,7 +24,10 @@ public:
  const Player& player() const { return state_.player; }
  const GameSnapshot& state() const { return state_; }
  std::uint64_t revision() const { return revision_; }
- bool startNewGame(unsigned players);
+ bool startNewGame(unsigned players,GameFormat format=GameFormat::Commander);
+ std::int64_t life(unsigned owner) const;
+ bool adjustPlayerLife(unsigned owner,std::int64_t delta);
+ bool synchronizeLocal(std::int64_t life,const std::array<std::int64_t,counterCount>& counters);
  void endGame();
  std::string serialize() const;
  bool deserialize(const std::string& json);

@@ -6,3 +6,6 @@
 
 /saves/
 current-game.json*
+
+*-profile.json
+device-profile.json

@@ -55,18 +55,18 @@ void AppUI::playerWedgeHit(lv_event_t* event) {
  auto* binding=static_cast<Binding*>(lv_event_get_user_data(event));auto& self=*binding->ui;
  auto* hit=static_cast<lv_hit_test_info_t*>(lv_event_get_param(event));lv_area_t area;lv_obj_get_coords(self.screen_,&area);
  double dx=hit->point->x-area.x1-180,dy=hit->point->y-area.y1-180,r2=dx*dx+dy*dy;
- auto count=self.game_.state().playerCount-1;if(!count){hit->res=false;return;}
+ unsigned first=self.networkFace()?2:self.game_.state().format==GameFormat::TwoHeadedGiant?3:2;auto count=self.networkFace()?static_cast<unsigned>(self.multiplayer_->opponents().size()):self.game_.state().playerCount-first+1;if(!count){hit->res=false;return;}
  double angle=std::atan2(dy,dx)*180/3.141592653589793;if(angle<0)angle+=360;
- double start=225.0+(binding->arg-2)*90.0/count,end=start+90.0/count;
+ double sweep=count>5?120.0:90.0;double start=270-sweep/2+(binding->arg-first)*sweep/count,end=start+sweep/count;
  hit->res=r2>=133.0*133.0 && r2<=164.0*164.0 && angle>=start && angle<=end;
 }
 void AppUI::playerTabs() {
- const unsigned colors[]{0xb62e51,0xb9a33e,0x23966b,0x497e9e,0x7d4ba1,0xba7146};
- auto count=game_.state().playerCount-1;if(count==0)return;const double span=90.0/count;
- for(unsigned i=1;i<=count;++i) {
-  double start=225.0+(i-1)*span,middle=start+span/2,angle=middle*3.141592653589793/180.0;
+ const unsigned colors[]{0xb62e51,0xb9a33e,0x23966b,0x497e9e,0x7d4ba1,0xba7146,0x359b9e,0xb34d83,0x72943b,0x6079bc,0x9b6949,0x8c57a4};
+ unsigned first=networkFace()?2:game_.state().format==GameFormat::TwoHeadedGiant?3:2;auto count=networkFace()?static_cast<unsigned>(multiplayer_->opponents().size()):game_.state().playerCount-first+1;if(count==0)return;const double sweep=count>5?120.0:90.0,span=sweep/count;
+ for(unsigned i=first-1;i<first-1+count;++i) {
+  double start=270-sweep/2+(i-(first-1))*span,middle=start+span/2,angle=middle*3.141592653589793/180.0;
   auto from=static_cast<unsigned>(start+1),to=static_cast<unsigned>(start+span-1);
-  arc(screen_,326,17,from,to,colors[i],29);
+  arc(screen_,326,17,from,to,networkFace()&&multiplayer_->opponents()[i-1].id.empty()?0x243640:colors[i],29);
   if(selectedPlayer_==i+1) {
    arc(screen_,326,17,from,to,violet,1);arc(screen_,270,45,from,to,violet,1);
    for(double edge:{start+1,start+span-1}) {
@@ -79,34 +79,44 @@ void AppUI::playerTabs() {
   auto* b=button(screen_,"",17,17,326,326,SelectPlayer,i+1);auto* binding=&bindings_.back();
   lv_obj_set_style_pad_all(b,0,0);lv_obj_set_style_bg_opa(b,0,0);lv_obj_set_style_bg_opa(b,0,LV_STATE_PRESSED);lv_obj_set_style_border_width(b,0,0);lv_obj_set_style_radius(b,0,0);lv_obj_clean(b);
   lv_obj_add_flag(b,LV_OBJ_FLAG_ADV_HITTEST);lv_obj_add_event_cb(b,playerWedgeHit,LV_EVENT_HIT_TEST,binding);
-  const auto* font=count>3?&tab_font:&lv_font_montserrat_14;int w=count>3?48:62,h=font->line_height*2;
+  const auto* font=count>3?&tab_font:&lv_font_montserrat_14;int w=count>5?static_cast<int>(148*span*3.141592653589793/180)-2:count>3?48:62,h=font->line_height*2;
   int x=static_cast<int>(std::round(180+148*std::cos(angle))),y=static_cast<int>(std::round(180+148*std::sin(angle)));
   auto* caption=box(b,x-17-w/2,y-17-h/2,w,h);lv_obj_set_style_bg_opa(caption,0,0);lv_obj_set_style_radius(caption,0,0);lv_obj_remove_flag(caption,LV_OBJ_FLAG_CLICKABLE);
   lv_obj_set_style_transform_pivot_x(caption,w/2,0);lv_obj_set_style_transform_pivot_y(caption,h/2,0);
   int rotation=static_cast<int>(std::round((middle-270)*10));lv_obj_set_style_transform_rotation(caption,(rotation+3600)%3600,0);
-  label(caption,"P"+std::to_string(i+1),0,0,w,font);
+  auto* playerName=label(caption,networkFace()?multiplayer_->opponents()[i-1].name:"P"+std::to_string(i+1),0,0,w,font);
+  if(networkFace())lv_label_set_long_mode(playerName,LV_LABEL_LONG_DOT);
   tabValues_[i]=label(caption,"",0,font->line_height,w,font);
  }
 }
 void AppUI::buildLifecycle() {
  if(view_==View::Startup) {
   label(screen_,"A R C A N A",65,67,230,&lv_font_montserrat_20,violet);
-  label(screen_,"COMMANDER LIFE COUNTER",55,103,250,&lv_font_montserrat_14,muted);
+  label(screen_,"LIFE COUNTER",55,103,250,&lv_font_montserrat_14,muted);
   button(screen_,"New game",83,147,194,48,NewGame);
   auto* resume=button(screen_,"Continue",83,213,194,48,ContinueGame);
   if(!game_.state().active)lv_obj_add_state(resume,LV_STATE_DISABLED);
   hint_=label(screen_,"",65,283,230,&lv_font_montserrat_14,muted);
+ }else if(view_==View::FormatSelect) {
+  const unsigned colors[]{0x7c58ba,0x468ca9,0x349353,0xb18038,0x607eb1};
+  const ToolIcon icons[]{ToolIcon::Shield,ToolIcon::D20,ToolIcon::LifeLink,ToolIcon::Reset,ToolIcon::Coin};
+  for(unsigned i=0;i<5;++i)radialSector(formatName(static_cast<GameFormat>(i)),i,5,ChooseFormat,i,colors[i],icons[i]);
+  radialBack();
  }else if(view_==View::PlayerSetup) {
-  label(screen_,"NEW GAME",70,69,220,&lv_font_montserrat_20,violet);
-  label(screen_,"Players in this match",60,111,240,&lv_font_montserrat_14,muted);
-  value_=label(screen_,"",45,153,270,&lv_font_montserrat_32);
-  label(screen_,"Turn knob to choose / 1 - 6",55,213,250,&lv_font_montserrat_14,violet);
-  button(screen_,"Confirm",76,265,101,42,ConfirmPlayers);button(screen_,"Back",183,265,101,42,Back);
+  auto* top=radialSector("",0,4,NoAction,0,0x246e88,ToolIcon::D20);lv_obj_clean(top);
+  label(screen_,formatName(draftFormat_),105,47,150,&lv_font_montserrat_14,ink);
+  value_=label(screen_,"",101,81,158,&lv_font_montserrat_20,ink);
+  hint_=label(screen_,"",93,112,174,&tab_font,ink);
+  bool adjustable=draftFormat_==GameFormat::Commander||draftFormat_==GameFormat::Classic||draftFormat_==GameFormat::TwoHeadedGiant;
+  radialSector(adjustable?"Add":"Fixed",1,4,adjustable?Plus:NoAction,0,adjustable?teal:0x30504b,adjustable?ToolIcon::Plus:ToolIcon::LifeLink);
+  radialSector("Confirm",2,4,ConfirmPlayers,0,0x7c58ba,ToolIcon::Confirm);
+  radialSector(adjustable?"Remove":"Fixed",3,4,adjustable?Minus:NoAction,0,adjustable?red:0x50303d,adjustable?ToolIcon::Minus:ToolIcon::LifeLink);
+  radialBack();
 
  }
 }
 void AppUI::refreshLifecycle() {
- if(view_==View::PlayerSetup)text(value_,std::to_string(draftPlayers_)+"-Players");
+ if(view_==View::PlayerSetup){text(value_,draftFormat_==GameFormat::TwoHeadedGiant?std::to_string(draftPlayers_/2)+" Teams / "+std::to_string(draftPlayers_)+"P":std::to_string(draftPlayers_)+"-Players");if(hint_)text(hint_,notice_);}
  if(view_==View::Startup) {
   text(hint_,!storageError_.empty()?"SAVE ERROR / match not saved":game_.state().active?"Unfinished match ready":"Ready for a new match");
   lv_obj_set_style_text_color(hint_,lv_color_hex(storageError_.empty()?muted:red),0);
@@ -149,16 +159,25 @@ void AppUI::buildDial() {
   auto* undoText=lv_obj_get_child(undo_,0);lv_obj_set_align(undoText,LV_ALIGN_TOP_LEFT);lv_obj_set_pos(undoText,85,302);lv_obj_set_size(undoText,156,18);
 
  }else {
-  auto* total=radialSector("",0,5,NoAction,0,0x246e88,ToolIcon::D20);lv_obj_clean(total);
+  if(networkFace()||!usesCommanderDamage(game_.state().format)) {
+   bool open=networkFace()&&multiplayer_->opponents()[selectedPlayer_-2].id.empty();bool editable=!networkFace()||(open&&multiplayer_->hosting());
+   auto* total=radialSector("",0,3,NoAction,0,open?0x243640:0x246e88,ToolIcon::LifeLink);lv_obj_clean(total);
+   label(screen_,networkFace()?multiplayer_->opponents()[selectedPlayer_-2].name:"P"+std::to_string(selectedPlayer_)+" / LIFE",95,47,170,&lv_font_montserrat_14,ink);
+   value_=label(screen_,"",112,77,136,&lv_font_montserrat_48,ink);if(open)label(screen_,"Open slot",120,121,120,&tab_font,muted);
+   radialSector(editable?"Add 1":open?"Waiting":"Player life",1,3,editable?Plus:NoAction,0,teal,ToolIcon::Plus);radialSector(editable?"Remove 1":open?"Free slot":"Synced",2,3,editable?Minus:NoAction,0,red,ToolIcon::LifeLink);radialBack(CloseDial);return;
+  }
+  unsigned sectors=game_.state().format==GameFormat::TwoHeadedGiant?6:5;
+  auto* total=radialSector("",0,sectors,NoAction,0,0x246e88,ToolIcon::D20);lv_obj_clean(total);
   label(screen_,"P"+std::to_string(selectedPlayer_)+" / CMD",117,47,126,&lv_font_montserrat_14,ink);
   value_=label(screen_,"0",120,69,120,&lv_font_montserrat_32,ink);
   label(screen_,"LIMIT 21",133,120,94,&tab_font,ink);
-  radialSector("Add 1",1,5,Plus,0,teal,ToolIcon::Plus);
-  auto* mode=radialSector("",2,5,Mode,0,0x327c68,ToolIcon::LifeLink);mode_=lv_obj_get_child(mode,1);
+  radialSector("Add 1",1,sectors,Plus,0,teal,ToolIcon::Plus);
+  auto* mode=radialSector("",2,sectors,Mode,0,0x327c68,ToolIcon::LifeLink);mode_=lv_obj_get_child(mode,1);
   lv_obj_set_style_text_font(mode_,&tab_font,0);lv_obj_set_height(mode_,30);lv_label_set_long_mode(mode_,LV_LABEL_LONG_WRAP);
-  auto* source=radialSector("",3,5,CycleSource,0,0x7c58ba,ToolIcon::Reset);detail_=lv_obj_get_child(source,1);
+  if(sectors==6){auto* recipient=radialSector("",3,sectors,ToggleRecipient,0,0x427e91,ToolIcon::LifeLink);recipientLabel_=lv_obj_get_child(recipient,1);}
+  auto* source=radialSector("",sectors-2,sectors,CycleSource,0,0x7c58ba,ToolIcon::Reset);detail_=lv_obj_get_child(source,1);
   lv_obj_set_style_text_font(detail_,&tab_font,0);lv_obj_set_height(detail_,30);lv_label_set_long_mode(detail_,LV_LABEL_LONG_WRAP);
-  radialSector("Remove 1",4,5,Minus,0,red,ToolIcon::Minus);
+  radialSector("Remove 1",sectors-1,sectors,Minus,0,red,ToolIcon::Minus);
   radialBack(CloseDial);
 
  }
@@ -300,9 +319,9 @@ void AppUI::buildPicker() {
 }
 void AppUI::refreshTabs() {
  const auto& state=game_.state();
- for(unsigned i=0;i<state.playerCount;++i)if(tabValues_[i]) {
+ for(unsigned i=0;i<tabValues_.size();++i)if(tabValues_[i]) {
   std::int64_t value=game_.player().life;
-  if(i>0){value=0;for(const auto& s:state.sources)if(s.owner==i+1)value=std::max(value,s.damage);}
+  if(i>0){if(networkFace()){auto others=multiplayer_->opponents();if(i-1<others.size())value=others[i-1].life;text(tabValues_[i],std::to_string(value));continue;}value=game_.life(i+1);if(usesCommanderDamage(state.format)){value=0;for(const auto& s:state.sources)if(s.owner==i+1)value=std::max(value,s.damage);}}
   text(tabValues_[i],std::to_string(value));
  }
  }
@@ -342,6 +361,7 @@ void AppUI::refreshDial() {
   if(commander)info=info.empty()?"21 COMMANDER\nDAMAGE":noLife&&poison?"LIFE / POISON\n/ CMD":noLife?"LIFE /\nCOMMANDER":"POISON /\nCOMMANDER";
   if(!lethal&&game_.player().monarch)info="MONARCH";
   if(!storageError_.empty()&&!lethal)info="SAVE FAILED";
+  if(!lethal&&networkFace()&&!multiplayer_->error().empty())info=multiplayer_->error();
   text(lifeMarker_,lethal?"\xef\x95\x8c":"\xef\x80\x84");lv_obj_set_style_text_color(lifeMarker_,lethal?lv_color_white():lv_color_hex(0xff2449),0);
   text(status_,info);lv_obj_set_style_text_color(status_,lethal?lv_color_white():lv_color_hex(teal),0);
   auto undoLabel=game_.recentUndoLabel(lv_tick_get());curvedUndoText(undoLabel.empty()?"Undo":undoLabel);
@@ -353,9 +373,12 @@ void AppUI::refreshDial() {
    auto* badge=lv_obj_get_parent(count);lv_obj_set_width(badge,width);lv_obj_set_x(badge,(side?345:56)-width);lv_obj_set_width(count,width-4);lv_obj_center(count);
   }
  }else {
+  if(networkFace()){auto others=multiplayer_->opponents();if(selectedPlayer_-2<others.size())number(value_,std::to_string(others[selectedPlayer_-2].life));return;}
+  if(!usesCommanderDamage(game_.state().format)){number(value_,std::to_string(game_.life(selectedPlayer_)));lv_obj_set_style_text_color(value_,lv_color_hex(game_.life(selectedPlayer_)<=0?red:ink),0);return;}
   auto* source=game_.source(sourceId_);
   number(value_,std::to_string(source?source->damage:0));
   text(detail_,source?source->name:"No commander source");
+  if(recipientLabel_)text(recipientLabel_,std::string("To P")+std::to_string(source?source->recipient:1));
   lv_obj_set_style_text_color(value_,lv_color_hex(source&&source->damage>=21?red:ink),0);
   text(mode_,subtractLife_?"Life linked: ON / 21":"Record only / 21");
  }

@@ -109,5 +109,31 @@ int main() {
  recent.setActionTime(20000);recent.adjustCounter(mtg::Counter::Energy,3);check(recent.recentUndoLabel(25001).empty(),"expired recent action disabled");
  recent.setActionTime(30000);recent.adjustCounter(mtg::Counter::Poison,2);recent.applyCommanderDamage(1,4,true);
  check(recent.undoRecent(31000)&&recent.player().life==40&&recent.source(1)->damage==0&&recent.player().counters[0]==0&&recent.player().counters[1]==3,"mixed recent changes restore atomically");
+ mtg::GameState formats;
+ for(auto format:{mtg::GameFormat::Classic,mtg::GameFormat::Brawl,mtg::GameFormat::Limited}) {
+  check(formats.startNewGame(2,format),"start noncommander preset");auto hp=mtg::startingLife(format);
+  check(formats.player().life==hp&&formats.life(2)==hp&&formats.state().sources.empty(),"correct starting life and no CMD sources");
+  formats.adjustPlayerLife(2,-7);check(formats.life(2)==hp-7&&formats.player().life==hp,"opponent life independent");
+  formats.undo();check(formats.life(2)==hp,"opponent life undo");formats.redo();check(formats.life(2)==hp-7,"opponent life redo");
+  check(!formats.applyCommanderDamage(1,21,true)&&!formats.commanderWarning(),"CMD disabled outside commander");
+  formats.reset();check(formats.life(2)==hp&&formats.player().life==hp,"reset uses preset life");
+ }
+ check(!formats.startNewGame(3,mtg::GameFormat::TwoHeadedGiant)&&formats.startNewGame(4,mtg::GameFormat::TwoHeadedGiant),"2HG requires four seats");
+ check(formats.state().teams[0]==formats.state().teams[1]&&formats.state().teams[2]==formats.state().teams[3]&&formats.state().teams[0]!=formats.state().teams[2],"explicit 2HG teams");
+ formats.adjustPlayerLife(2,-5);check(formats.life(1)==35&&formats.life(2)==35,"local team shares life");
+ formats.adjustPlayerLife(4,-8);check(formats.life(3)==32&&formats.life(4)==32&&formats.life(1)==35,"enemy team shares independent life");
+ formats.undo();check(formats.life(3)==40&&formats.life(4)==40,"team life undo atomic");formats.redo();
+ formats.applyCommanderDamage(1,19,false);formats.applyCommanderDamage(2,2,false);check(!formats.commanderWarning(),"2HG never combines damage dealt to different teammates");formats.adjustCommanderDamage(1,-19,false);formats.adjustCommanderDamage(2,-2,false);
+ formats.applyCommanderDamage(1,21,true);check(formats.life(1)==14&&formats.life(2)==14&&formats.commanderWarning(),"2HG linked commander damage is atomic");
+ formats.adjustCounter(mtg::Counter::Poison,14);check(!formats.poisonWarning(),"2HG poison below threshold");formats.adjustCounter(mtg::Counter::Poison,1);check(formats.poisonWarning(),"2HG poison shared threshold");
+ formats.reset();check(formats.life(1)==40&&formats.life(2)==40&&formats.life(3)==40&&formats.life(4)==40,"2HG reset restores both teams");
+ for(unsigned teams=2;teams<=6;++teams){
+  check(formats.startNewGame(teams*2,mtg::GameFormat::TwoHeadedGiant),"2HG supports two through six teams");
+  for(unsigned team=0;team<teams;++team){unsigned seat=2*team+1;formats.adjustPlayerLife(seat,-static_cast<std::int64_t>(team+1));check(formats.life(seat)==39-static_cast<std::int64_t>(team)&&formats.life(seat+1)==formats.life(seat),"each team has independent shared life");}
+  formats.undo();check(formats.life(teams*2)==40,"last team life undo atomic");formats.redo();check(formats.life(teams*2)==40-static_cast<std::int64_t>(teams),"last team life redo atomic");
+  formats.reset();for(unsigned seat=1;seat<=teams*2;++seat)check(formats.life(seat)==40,"reset restores every team");
+ }
+ check(!formats.startNewGame(2,mtg::GameFormat::TwoHeadedGiant)&&!formats.startNewGame(13,mtg::GameFormat::TwoHeadedGiant)&&!formats.startNewGame(5,mtg::GameFormat::TwoHeadedGiant),"reject invalid team counts");
+ check(!formats.startNewGame(8,mtg::GameFormat::Commander),"larger limits apply only to 2HG");
  std::cout << "All game engine checks passed\n";
 }

@@ -2,13 +2,14 @@
 #include "lvgl.h"
 #include "core/GameState.hpp"
 #include "core/RandomTools.hpp"
+#include "core/Multiplayer.hpp"
 #include "platform/IHardware.hpp"
 #include "Widgets/ToolIcons.hpp"
 #include <deque>
 namespace mtg {
 class AppUI {
 public:
- AppUI(GameState& game,IHardware& hardware,lv_obj_t* screen,IRandom& random);
+ AppUI(GameState& game,IHardware& hardware,lv_obj_t* screen,IRandom& random,DeviceProfile* profile=nullptr,Multiplayer* multiplayer=nullptr);
  void update();
  void goHome();
  void openTrackers() { if(game_.state().active) navigate(View::Menu); }
@@ -18,8 +19,8 @@ public:
  void undo() { handle(Undo,0); }
  void redo() { handle(Redo,0); }
 private:
- enum class View { Startup, PlayerSetup, EndConfirm, Gear, Brightness, ResetConfirm, CoinResult, RollResult, CounterPicker, Home, Menu, Counter, Sources, Damage, Commanders, Casts, Profiles, Status, History, Rename, AddSource, Threshold };
- enum Action { NoAction, OpenBrightness, ToolBack, SideStep, OpenPicker, ChooseShortcut, RecentUndo, OpenGear, AskReset, ResetYes, ResetNo, FlipCoin, RollD20, NewGame, ContinueGame, ConfirmPlayers, SelectPlayer, CycleSource, CloseDial, RequestEnd, FinishGame, CancelEnd, Back, Menu, Minus, Plus, OpenCounter, OpenSources, OpenOwn, OpenProfiles, OpenStatus,
+ enum class View { Startup, ArcanaMode, NameSetup, HostJoin, BrowseGames, NetworkLobby, FormatSelect, PlayerSetup, EndConfirm, Gear, Brightness, ResetConfirm, CoinResult, RollResult, CounterPicker, Home, Menu, Counter, Sources, Damage, Commanders, Casts, Profiles, Status, History, Rename, AddSource, Threshold };
+ enum Action { SingleArcana,MultiArcana,NameKey,NameDelete,NameSpace,NameSymbols,NameConfirm,HostGame,FindGames,JoinGame,RefreshGames,NextGames,StartNetwork, ToggleRecipient, ChooseFormat, NoAction, OpenBrightness, ToolBack, SideStep, OpenPicker, ChooseShortcut, RecentUndo, OpenGear, AskReset, ResetYes, ResetNo, FlipCoin, RollD20, NewGame, ContinueGame, ConfirmPlayers, SelectPlayer, CycleSource, CloseDial, RequestEnd, FinishGame, CancelEnd, Back, Menu, Minus, Plus, OpenCounter, OpenSources, OpenOwn, OpenProfiles, OpenStatus,
   OpenHistory, Undo, Redo, Apply, Mode, NewSource, CreateSource, NewOwn, NewTurn, Rename,
   Append, Delete, SaveName, Limit, ToggleCounter, Source, Own, ToggleStatus, Day };
  struct Binding { AppUI* ui; Action action; std::uint32_t arg; double sectorStart=0,sectorSpan=0; };
@@ -39,6 +40,10 @@ private:
  void setContentOpacity(lv_opa_t opacity);
  void buildDial();
  void buildTools();
+ void buildMultiplayer();
+ void refreshMultiplayer();
+ void beginArcanaSelection(View returnTo);
+ bool networkFace()const{return multiplayer_&&multiplayer_->attached()&&multiplayer_->connected()&&multiplayer_->started();}
  lv_obj_t* radialSector(const std::string& title,unsigned index,unsigned count,Action action,std::uint32_t arg,unsigned color,widgets::ToolIcon icon);
  void radialBack(Action action=ToolBack);
  void buildPicker();
@@ -48,6 +53,7 @@ private:
  void refreshBattery();
  void curvedUndoText(const std::string& value);
  void buildLifecycle();
+ void beginFormatSelection(View returnTo);
  void refreshLifecycle();
  void playerTabs();
  void refreshTabs();
@@ -64,6 +70,8 @@ private:
  void partialDividers();
  lv_obj_t* bigValue(int y=115);
  void stepButtons(int y=216);
+ DeviceProfile fallbackProfile_;DeviceProfile* profile_;Multiplayer* multiplayer_;
+ std::string nameDraft_,networkSignature_;bool nameSymbols_=false,hostPending_=false;unsigned lobbyPage_=0;View arcanaReturn_=View::Startup;
  GameState& game_;
  IHardware& hardware_;
  IRandom& random_;
@@ -71,6 +79,8 @@ private:
  bool coinHeads_=false;
  StarterRoll starterRoll_;
  lv_obj_t* screen_;
+ GameFormat draftFormat_=GameFormat::Commander;
+ View formatReturn_=View::Startup;
  View view_=View::Startup, renameReturn_=View::Home, endReturn_=View::Gear;
  bool lifeHoldActive_=false, lifeHoldCancelled_=false;
  int lifeHoldSign_=1;
@@ -80,7 +90,7 @@ private:
  std::size_t ownIndex_=0;
  std::int64_t pending_=1;
  unsigned owner_=2, character_=0, selectedPlayer_=1, draftPlayers_=4;
- std::array<lv_obj_t*,6> tabValues_{};
+ std::array<lv_obj_t*,12> tabValues_{};
  std::string storageError_,undoCurvedText_;
  bool subtractLife_=true, rebuild_=true;
  bool transitionPending_=false,transitionActive_=false;
@@ -93,6 +103,6 @@ private:
  lv_obj_t* battery_=nullptr;
  lv_obj_t* undoArc_=nullptr;
  lv_obj_t* brightnessSlider_=nullptr;
- lv_obj_t *lifeMarker_=nullptr,*lifeRight_=nullptr,*value_=nullptr,*detail_=nullptr,*hint_=nullptr,*aux_=nullptr,*status_=nullptr,*poison_=nullptr,*damage_=nullptr,*scroll_=nullptr,*apply_=nullptr,*mode_=nullptr,*undo_=nullptr,*redo_=nullptr;
+ lv_obj_t *recipientLabel_=nullptr,*lifeMarker_=nullptr,*lifeRight_=nullptr,*value_=nullptr,*detail_=nullptr,*hint_=nullptr,*aux_=nullptr,*status_=nullptr,*poison_=nullptr,*damage_=nullptr,*scroll_=nullptr,*apply_=nullptr,*mode_=nullptr,*undo_=nullptr,*redo_=nullptr;
 };
 }

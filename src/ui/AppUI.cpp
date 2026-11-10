@@ -14,7 +14,7 @@ unsigned counterColor(Counter c) {
 }
 std::string signedNumber(std::int64_t n){return std::to_string(n);}
 }
-AppUI::AppUI(GameState& game,IHardware& hardware,lv_obj_t* screen,IRandom& random):game_(game),hardware_(hardware),random_(random),screen_(screen) {build();refresh();}
+AppUI::AppUI(GameState& game,IHardware& hardware,lv_obj_t* screen,IRandom& random,DeviceProfile* profile,Multiplayer* multiplayer):profile_(profile?profile:&fallbackProfile_),multiplayer_(multiplayer),game_(game),hardware_(hardware),random_(random),screen_(screen) {build();refresh();}
 void AppUI::clicked(lv_event_t* event) {
  auto* binding=static_cast<Binding*>(lv_event_get_user_data(event));
  if(binding->ui->hardware_.powered()) binding->ui->handle(binding->action,binding->arg);
@@ -70,19 +70,35 @@ void AppUI::stepButtons(int y) {
  button(screen_,"-",74,y,70,42,Minus);button(screen_,"+",216,y,70,42,Plus);
 }
 void AppUI::navigate(View view) {transitionPending_=true;lifeHoldActive_=false;lifeHoldCancelled_=true;view_=view;notice_.clear();rebuild_=true;}
-void AppUI::requestNewGame() {if(game_.state().active)navigate(View::ResetConfirm);else {draftPlayers_=4;navigate(View::PlayerSetup);}}
+void AppUI::beginArcanaSelection(View returnTo){arcanaReturn_=returnTo;hostPending_=false;navigate(View::ArcanaMode);}
+void AppUI::beginFormatSelection(View returnTo) {formatReturn_=returnTo;draftFormat_=game_.state().format;draftPlayers_=draftFormat_==GameFormat::Commander||draftFormat_==GameFormat::TwoHeadedGiant?4:2;navigate(View::FormatSelect);}
+void AppUI::requestNewGame() {if(game_.state().active){formatReturn_=View::Home;navigate(View::ResetConfirm);}else beginArcanaSelection(View::Startup);}
 void AppUI::goHome() {selectedPlayer_=1;navigate(game_.state().active?View::Home:View::Startup);}
 void AppUI::setStorageError(const std::string& error) {if(error!=storageError_){storageError_=error;if(view_==View::Startup)rebuild_=true;}}
 void AppUI::selectPlayer(unsigned player) {
- if(player<1 || player>game_.state().playerCount)return;
+ if(player<1 || player>(networkFace()?multiplayer_->opponents().size()+1:game_.state().playerCount))return;
  selectedPlayer_=player;
  if(player>1){sourceId_=0;for(const auto& s:game_.state().sources)if(s.owner==player){sourceId_=s.id;break;}}
  navigate(View::Home);
 }
 void AppUI::handle(Action action,std::uint32_t arg) {
  game_.setActionTime(lv_tick_get());
- if((view_==View::Startup || view_==View::PlayerSetup || !game_.state().active) && action!=NewGame && action!=ContinueGame && action!=ConfirmPlayers && action!=Back)return;
+ if(!game_.state().active&&view_!=View::Startup&&view_!=View::ArcanaMode&&view_!=View::NameSetup&&view_!=View::HostJoin&&view_!=View::BrowseGames&&view_!=View::NetworkLobby&&view_!=View::PlayerSetup&&view_!=View::FormatSelect)return;
+
  switch(action) {
+  case SingleArcana:hostPending_=false;beginFormatSelection(View::ArcanaMode);break;
+  case MultiArcana:nameDraft_=profile_->name();nameSymbols_=false;navigate(View::NameSetup);break;
+  case NameKey:if(nameDraft_.size()<12)nameDraft_+=static_cast<char>(arg);break;
+  case NameDelete:if(!nameDraft_.empty())nameDraft_.pop_back();break;
+  case NameSpace:if(!nameDraft_.empty()&&nameDraft_.size()<12&&nameDraft_.back()!=' ')nameDraft_+=' ';break;
+  case NameSymbols:nameSymbols_=!nameSymbols_;rebuild_=true;break;
+  case NameConfirm:if(profile_->setName(nameDraft_)){notice_.clear();navigate(View::HostJoin);}else notice_=profile_->error();break;
+  case HostGame:if(!multiplayer_){notice_="Network unavailable";break;}hostPending_=true;beginFormatSelection(View::HostJoin);break;
+  case FindGames:if(!multiplayer_){notice_="Network unavailable";break;}lobbyPage_=0;if(multiplayer_->attached())multiplayer_->leave();multiplayer_->discover();navigate(View::BrowseGames);break;
+  case RefreshGames:if(multiplayer_)multiplayer_->discover();break;
+  case NextGames:if(multiplayer_)lobbyPage_=(lobbyPage_+1)%std::max<std::size_t>(1,(multiplayer_->lobbies().size()+2)/3);rebuild_=true;break;
+  case JoinGame:if(multiplayer_&&multiplayer_->join(arg))navigate(View::NetworkLobby);break;
+  case StartNetwork:if(multiplayer_&&multiplayer_->start())goHome();break;
   case NoAction:break;
   case SideStep: {
    unsigned side=arg/2;auto counter=game_.state().shortcuts[side];auto value=game_.player().counters[static_cast<unsigned>(counter)];
@@ -92,28 +108,35 @@ void AppUI::handle(Action action,std::uint32_t arg) {
   case ChooseShortcut:game_.setShortcut(pickerSide_,static_cast<Counter>(arg));goHome();break;
   case RecentUndo:game_.undoRecent(lv_tick_get());break;
   case OpenBrightness:navigate(View::Brightness);break;
-  case ToolBack:if(view_==View::Gear||view_==View::CounterPicker)goHome();else if(view_==View::EndConfirm)navigate(endReturn_);else navigate(View::Gear);break;
+  case ToolBack:if(view_==View::ArcanaMode){navigate(arcanaReturn_);break;}if(view_==View::NameSetup){navigate(View::ArcanaMode);break;}if(view_==View::HostJoin){nameDraft_=profile_->name();navigate(View::NameSetup);break;}if(view_==View::BrowseGames){navigate(View::HostJoin);break;}if(view_==View::NetworkLobby){if(multiplayer_)multiplayer_->leave();game_.endGame();navigate(View::HostJoin);break;}if(view_==View::FormatSelect){navigate(formatReturn_);break;}if(view_==View::PlayerSetup){navigate(View::FormatSelect);break;}if(view_==View::Gear||view_==View::CounterPicker)goHome();else if(view_==View::EndConfirm)navigate(endReturn_);else navigate(View::Gear);break;
   case OpenGear:navigate(View::Gear);break;
-  case AskReset:navigate(View::ResetConfirm);break;
-  case ResetYes:game_.startNewGame(game_.state().playerCount);subtractLife_=true;goHome();break;
+  case AskReset:formatReturn_=View::Gear;navigate(View::ResetConfirm);break;
+  case ResetYes:beginArcanaSelection(formatReturn_);break;
   case ResetNo:navigate(View::Gear);break;
   case FlipCoin:coinHeads_=flipCoin(random_);navigate(View::CoinResult);break;
-  case RollD20:starterRoll_=rollStarter(game_.state().playerCount,random_);navigate(View::RollResult);break;
-  case NewGame:draftPlayers_=4;navigate(View::PlayerSetup);break;
+  case RollD20:starterRoll_=rollStarter(game_.state().format==GameFormat::TwoHeadedGiant?game_.state().playerCount/2:game_.state().playerCount,random_);navigate(View::RollResult);break;
+  case NewGame:beginArcanaSelection(View::Startup);break;
+  case ChooseFormat:if(arg<static_cast<unsigned>(GameFormat::Count)){draftFormat_=static_cast<GameFormat>(arg);draftPlayers_=draftFormat_==GameFormat::Commander||draftFormat_==GameFormat::TwoHeadedGiant?4:2;navigate(View::PlayerSetup);}break;
   case ContinueGame:if(game_.state().active)selectPlayer(1);break;
-  case ConfirmPlayers:if(game_.startNewGame(draftPlayers_)){subtractLife_=true;selectPlayer(1);}break;
+  case ConfirmPlayers:if(hostPending_){if(multiplayer_&&multiplayer_->host(draftFormat_,draftPlayers_)){hostPending_=false;navigate(View::NetworkLobby);}else notice_=multiplayer_?multiplayer_->error():"Network unavailable";}else {if(multiplayer_&&multiplayer_->attached())multiplayer_->leave();if(game_.startNewGame(draftPlayers_,draftFormat_)){subtractLife_=true;selectPlayer(1);}}break;
   case SelectPlayer:selectPlayer(arg);break;
   case CloseDial:if(view_==View::CoinResult||view_==View::RollResult)navigate(View::Gear);else selectPlayer(1);break;
+  case ToggleRecipient: {
+   auto* current=game_.source(sourceId_);unsigned target=current&&current->recipient==1?2:1;
+   for(const auto& source:game_.state().sources)if(source.owner==selectedPlayer_&&source.recipient==target){sourceId_=source.id;break;}break;
+  }
   case CycleSource: {
-   std::vector<std::uint32_t> sources;for(const auto& s:game_.state().sources)if(s.owner==selectedPlayer_)sources.push_back(s.id);
+   auto* current=game_.source(sourceId_);unsigned target=current?current->recipient:1;
+   std::vector<std::uint32_t> sources;for(const auto& s:game_.state().sources)if(s.owner==selectedPlayer_&&s.recipient==target)sources.push_back(s.id);
    if(!sources.empty()){auto it=std::find(sources.begin(),sources.end(),sourceId_);sourceId_=(it==sources.end()||++it==sources.end())?sources.front():*it;}
    break;
   }
   case RequestEnd:endReturn_=view_;navigate(View::EndConfirm);break;
-  case FinishGame:game_.endGame();navigate(View::Startup);break;
+  case FinishGame:if(multiplayer_&&multiplayer_->attached())multiplayer_->leave();game_.endGame();navigate(View::Startup);break;
   case CancelEnd:navigate(endReturn_);break;
   case Back:
-   if(view_==View::PlayerSetup) navigate(View::Startup);
+   if(view_==View::PlayerSetup) navigate(View::FormatSelect);
+   else if(view_==View::FormatSelect)navigate(formatReturn_);
    else if(view_==View::EndConfirm) navigate(endReturn_);
    else if(view_==View::Counter)goHome();
    else if(view_==View::Rename) navigate(renameReturn_);
@@ -139,7 +162,7 @@ void AppUI::handle(Action action,std::uint32_t arg) {
   case Apply:
    notice_=game_.applyCommanderDamage(sourceId_,pending_,subtractLife_)?"Recorded / Undo in History":"Amount out of range";
    pending_=1;break;
-  case NewSource:owner_=std::min(2u,game_.state().playerCount);navigate(View::AddSource);break;
+  case NewSource:owner_=game_.state().format==GameFormat::TwoHeadedGiant?3:std::min(2u,game_.state().playerCount);navigate(View::AddSource);break;
   case CreateSource:game_.addSource(owner_);navigate(View::Sources);break;
   case NewOwn:game_.addOwnCommander();navigate(View::Commanders);break;
   case NewTurn:game_.newTurn();notice_="New turn / spells reset";break;
@@ -167,10 +190,12 @@ void AppUI::adjust(std::int64_t delta) {
  bool ok=true;
  switch(view_) {
   case View::Brightness:hardware_.setBrightness(static_cast<unsigned>(std::clamp<std::int64_t>(hardware_.brightness()+std::clamp<std::int64_t>(delta,-100,100),0,100)));break;
-  case View::Startup:case View::EndConfirm:break;
-  case View::PlayerSetup:draftPlayers_=static_cast<unsigned>(std::clamp<std::int64_t>(draftPlayers_+std::clamp<std::int64_t>(delta,-6,6),1,6));break;
+  case View::Startup:case View::ArcanaMode:case View::NameSetup:case View::HostJoin:case View::BrowseGames:case View::NetworkLobby:case View::FormatSelect:case View::EndConfirm:break;
+  case View::PlayerSetup:if(draftFormat_==GameFormat::TwoHeadedGiant)draftPlayers_=2*static_cast<unsigned>(std::clamp<std::int64_t>(draftPlayers_/2+std::clamp<std::int64_t>(delta,-6,6),2,6));else if(draftFormat_==GameFormat::Commander||draftFormat_==GameFormat::Classic)draftPlayers_=static_cast<unsigned>(std::clamp<std::int64_t>(draftPlayers_+std::clamp<std::int64_t>(delta,-6,6),2,6));break;
   case View::Home:
    if(selectedPlayer_==1)ok=game_.adjustLife(delta);
+   else if(networkFace()){auto peers=multiplayer_->opponents();if(selectedPlayer_-2<peers.size()&&peers[selectedPlayer_-2].id.empty())ok=multiplayer_->adjustOpenSeat(peers[selectedPlayer_-2].seat,delta);break;}
+   else if(!usesCommanderDamage(game_.state().format))ok=game_.adjustPlayerLife(selectedPlayer_,delta);
    else {const auto* s=game_.source(sourceId_);if(s && delta<0 && delta < -s->damage)delta=-s->damage;ok=game_.adjustCommanderDamage(sourceId_,delta,subtractLife_);}break;
   case View::Counter:ok=game_.adjustCounter(counter_,delta);break;
   case View::Casts:ok=game_.adjustCasts(ownIndex_,delta);break;
@@ -184,7 +209,7 @@ void AppUI::adjust(std::int64_t delta) {
    if(delta>0 && pending_>std::numeric_limits<std::int64_t>::max()-delta)ok=false;
    else if(delta<0 && delta<1-pending_)pending_=1;
    else pending_+=delta;break;
-  case View::AddSource:owner_=static_cast<unsigned>(std::clamp<std::int64_t>(static_cast<std::int64_t>(owner_)+std::clamp<std::int64_t>(delta,-6,6),1,game_.state().playerCount));break;
+  case View::AddSource:owner_=static_cast<unsigned>(std::clamp<std::int64_t>(static_cast<std::int64_t>(owner_)+std::clamp<std::int64_t>(delta,-6,6),game_.state().format==GameFormat::TwoHeadedGiant?3:1,game_.state().playerCount));break;
   case View::Rename:character_=static_cast<unsigned>((character_+delta%static_cast<std::int64_t>(alphabet.size())+alphabet.size())%alphabet.size());break;
   default:if(scroll_)lv_obj_scroll_by(scroll_,0,static_cast<int>(-std::clamp<std::int64_t>(delta,-10,10))*38,LV_ANIM_OFF);break;
  }
@@ -194,7 +219,7 @@ void AppUI::build() {
  transitionActive_=false;
  lv_obj_clean(screen_);bindings_.clear();tabEdgePoints_.clear();
  undoCurvedText_.clear();undoArc_=nullptr;battery_=nullptr;brightnessSlider_=nullptr;batteryState_=-2;
- lifeMarker_=lifeRight_=value_=detail_=hint_=aux_=status_=poison_=damage_=scroll_=apply_=mode_=undo_=redo_=nullptr;
+ recipientLabel_=nullptr;lifeMarker_=lifeRight_=value_=detail_=hint_=aux_=status_=poison_=damage_=scroll_=apply_=mode_=undo_=redo_=nullptr;
  tabValues_.fill(nullptr);
  lv_obj_set_style_bg_color(screen_,lv_color_hex(background),0);lv_obj_set_style_bg_opa(screen_,255,0);
  lv_obj_set_style_radius(screen_,LV_RADIUS_CIRCLE,0);lv_obj_set_style_clip_corner(screen_,true,0);
@@ -203,15 +228,16 @@ void AppUI::build() {
  dialFrame();contentFirst_=lv_obj_get_child_count(screen_);
  const auto& state=game_.state();const auto& p=game_.player();
  switch(view_) {
-  case View::Startup:case View::PlayerSetup:buildLifecycle();break;
+  case View::ArcanaMode:case View::NameSetup:case View::HostJoin:case View::BrowseGames:case View::NetworkLobby:buildMultiplayer();break;
+  case View::Startup:case View::FormatSelect:case View::PlayerSetup:buildLifecycle();break;
   case View::EndConfirm:case View::Brightness:case View::Gear:case View::ResetConfirm:case View::CoinResult:case View::RollResult:buildTools();break;
   case View::Home:buildDial();break;
   case View::CounterPicker:buildPicker();break;
   case View::Menu: {
    header("TRACKERS","Tap to edit / turn to scroll");auto* rows=list();int n=0;
    row(rows,n++,"POISON",std::to_string(p.counters[0])+" / "+std::to_string(state.poisonLimit),OpenCounter,0,red);
-   row(rows,n++,"COMMANDER DAMAGE",std::to_string(state.sources.size())+" separate sources",OpenSources,0,gold);
-   row(rows,n++,"YOUR COMMANDERS","Cast counts / next-cast tax",OpenOwn);
+   if(usesCommanderDamage(state.format))row(rows,n++,"COMMANDER DAMAGE",std::to_string(state.sources.size())+" separate sources",OpenSources,0,gold);
+   if(usesCommanderDamage(state.format)||state.format==GameFormat::Brawl)row(rows,n++,"YOUR COMMANDERS","Cast counts / next-cast tax",OpenOwn);
    for(unsigned i=1;i<counterCount;++i)if(p.enabled[i])
     row(rows,n++,i==5?p.customName:counterName(static_cast<Counter>(i)),std::to_string(p.counters[i]),OpenCounter,i,counterColor(static_cast<Counter>(i)));
    row(rows,n++,"DECK TRACKERS","Choose optional counters",OpenProfiles);
@@ -233,7 +259,7 @@ void AppUI::build() {
   }
   case View::Sources: {
    header("DAMAGE RECEIVED","Per commander / threshold 21");auto* rows=list();int n=0;
-   for(const auto& s:state.sources)row(rows,n++,s.name,std::to_string(s.damage)+" / 21 combat damage",Source,s.id,s.damage>=21?red:gold);
+   for(const auto& s:state.sources)row(rows,n++,s.name,std::to_string(s.damage)+" / 21"+(state.format==GameFormat::TwoHeadedGiant?" to P"+std::to_string(s.recipient):" combat damage"),Source,s.id,s.damage>=21?red:gold);
    button(screen_,"+ Commander source",80,283,200,34,NewSource);break;
   }
   case View::Damage: {
@@ -307,7 +333,8 @@ void AppUI::refresh() {
  if(redo_) {if(game_.canRedo())lv_obj_remove_state(redo_,LV_STATE_DISABLED);else lv_obj_add_state(redo_,LV_STATE_DISABLED);}
  const auto& p=game_.player();const auto& state=game_.state();
  switch(view_) {
-  case View::Startup:case View::PlayerSetup:case View::EndConfirm:refreshLifecycle();break;
+  case View::ArcanaMode:case View::NameSetup:case View::HostJoin:case View::BrowseGames:case View::NetworkLobby:refreshMultiplayer();break;
+  case View::Startup:case View::FormatSelect:case View::PlayerSetup:case View::EndConfirm:refreshLifecycle();break;
   case View::Home:refreshDial();break;
   case View::Brightness:text(value_,std::to_string(hardware_.brightness())+"%");if(brightnessSlider_)lv_slider_set_value(brightnessSlider_,hardware_.brightness(),LV_ANIM_OFF);break;
   case View::Counter: {
@@ -349,8 +376,16 @@ void AppUI::advanceTransition() {
  unsigned remaining=180-elapsed;setContentOpacity(static_cast<lv_opa_t>(255-255*remaining*remaining/(180*180)));
 }
 void AppUI::update() {
+ if(multiplayer_){
+  multiplayer_->tick(lv_tick_get());std::string signature=multiplayer_->error()+std::to_string(multiplayer_->connected())+std::to_string(multiplayer_->started());
+  for(const auto& p:multiplayer_->players())signature+=p.id+p.name+std::to_string(p.online);
+  for(const auto& l:multiplayer_->lobbies())signature+=l.id+l.name+std::to_string(l.joined)+std::to_string(l.started);
+  if(signature!=networkSignature_){networkSignature_=signature;if(view_==View::BrowseGames||view_==View::NetworkLobby||(view_==View::Home&&networkFace()))rebuild_=true;lifeHoldActive_=false;lifeHoldCancelled_=true;}
+  if(view_==View::NetworkLobby&&multiplayer_->connected()&&multiplayer_->started())goHome();
+ }
+
  if(lifeHoldActive_){if(!hardware_.powered()){lifeHoldActive_=false;lifeHoldCancelled_=true;}else if(hardware_.touch().pressed)repeatLifeHold(lv_tick_get());}
- if(view_!=View::Startup && view_!=View::PlayerSetup && !game_.state().active)navigate(View::Startup);
+ if(view_!=View::Startup && view_!=View::PlayerSetup && view_!=View::FormatSelect && view_!=View::ArcanaMode&&view_!=View::NameSetup&&view_!=View::HostJoin&&view_!=View::BrowseGames&&view_!=View::NetworkLobby && !game_.state().active)navigate(View::Startup);
  game_.setActionTime(lv_tick_get());
  auto delta=hardware_.takeRotation();if(delta && hardware_.powered())adjust(delta);
  if((view_==View::Damage && !game_.source(sourceId_)) || (view_==View::Casts && ownIndex_>=game_.state().commanders.size()))navigate(View::Menu);
