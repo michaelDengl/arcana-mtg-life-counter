@@ -73,7 +73,7 @@ int main(int argc,char** argv) {
  mtg::LanTransport transport;mtg::Multiplayer multiplayer(game,profile,transport);
  mtg::FileStorage storage(std::filesystem::u8path(saveFile));mtg::SessionPersistence session(game,storage);persistence=&session;
  if(!session.load())std::cerr<<session.error()<<'\n';
- auto* window=SDL_CreateWindow("MTG Life Counter | Digital Twin 0.14.0",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,W,H,smoke?SDL_WINDOW_HIDDEN:SDL_WINDOW_SHOWN);
+ auto* window=SDL_CreateWindow("MTG Life Counter | Digital Twin 0.14.3",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,W,H,smoke?SDL_WINDOW_HIDDEN:SDL_WINDOW_SHOWN);
  if(!window) { std::cerr<<SDL_GetError();SDL_Quit();return 1; }
  renderer=SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);
  texture=renderer?SDL_CreateTexture(renderer,SDL_PIXELFORMAT_ARGB8888,SDL_TEXTUREACCESS_STREAMING,W,H):nullptr;
@@ -94,7 +94,7 @@ int main(int argc,char** argv) {
  text(root,"YOUR ARCANA SESSION",32,136,0x00d8ff);
  auto* stats=text(root,"",32,173);
  lv_obj_set_width(stats,216);lv_label_set_long_mode(stats,LV_LABEL_LONG_WRAP);
- text(root,"P1 life / named network peers\nApp 0.14.0 / SDL2",32,318,0x81a5b7);
+ text(root,"P1 life / named network peers\nApp 0.14.3 / SDL2",32,318,0x81a5b7);
  text(root,"INPUT",32,398,0x00d8ff);
  text(root,"Wheel / arrows: adjust\nTap a tracker to edit\nTab: trackers\nCtrl+Z / Y: undo / redo\nP: power / R: new game\nEsc: close",32,431);
  auto* bezel=lv_obj_create(root);lv_obj_set_pos(bezel,290,91);lv_obj_set_size(bezel,420,420);

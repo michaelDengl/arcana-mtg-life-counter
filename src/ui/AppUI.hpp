@@ -20,7 +20,7 @@ public:
  void redo() { handle(Redo,0); }
 private:
  enum class View { Startup, ArcanaMode, NameSetup, HostJoin, BrowseGames, NetworkLobby, FormatSelect, PlayerSetup, EndConfirm, Gear, Brightness, ResetConfirm, CoinResult, RollResult, CounterPicker, Home, Menu, Counter, Sources, Damage, Commanders, Casts, Profiles, Status, History, Rename, AddSource, Threshold };
- enum Action { SingleArcana,MultiArcana,NameKey,NameDelete,NameSpace,NameSymbols,NameConfirm,HostGame,FindGames,JoinGame,RefreshGames,NextGames,StartNetwork, ToggleRecipient, ChooseFormat, NoAction, OpenBrightness, ToolBack, SideStep, OpenPicker, ChooseShortcut, RecentUndo, OpenGear, AskReset, ResetYes, ResetNo, FlipCoin, RollD20, NewGame, ContinueGame, ConfirmPlayers, SelectPlayer, CycleSource, CloseDial, RequestEnd, FinishGame, CancelEnd, Back, Menu, Minus, Plus, OpenCounter, OpenSources, OpenOwn, OpenProfiles, OpenStatus,
+ enum Action { SingleArcana,MultiArcana,NameKey,NameChange,NameDelete,NameSpace,NameSymbols,NameConfirm,HostGame,FindGames,JoinGame,RefreshGames,NextGames,StartNetwork, ToggleRecipient, ChooseFormat, NoAction, OpenBrightness, ToolBack, SideStep, OpenPicker, ChooseShortcut, RecentUndo, OpenGear, AskReset, ResetYes, ResetNo, FlipCoin, RollD20, NewGame, ContinueGame, ConfirmPlayers, SelectPlayer, CycleSource, CloseDial, RequestEnd, FinishGame, CancelEnd, Back, Menu, Minus, Plus, OpenCounter, OpenSources, OpenOwn, OpenProfiles, OpenStatus,
   OpenHistory, Undo, Redo, Apply, Mode, NewSource, CreateSource, NewOwn, NewTurn, Rename,
   Append, Delete, SaveName, Limit, ToggleCounter, Source, Own, ToggleStatus, Day };
  struct Binding { AppUI* ui; Action action; std::uint32_t arg; double sectorStart=0,sectorSpan=0; };

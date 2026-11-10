@@ -1,6 +1,6 @@
 # Arcana / MTG Life Counter
 
-**Version 0.14.0** - Windows digital twin, multi-format play and local-network multiplayer.
+**Version 0.14.3** - Windows digital twin, multi-format play and local-network multiplayer.
 
 A native Windows digital twin of a round 360 x 360 knob display, with a shared LVGL interface designed for eventual ESP32-S3 deployment. The app supports Commander, Classic, Commander 2HG, Brawl and Limited, with saved-match recovery and a touch/rotary interface.
 
@@ -20,6 +20,13 @@ The current implementation is a working Windows digital twin with portable game 
 | Startup | Player count | Main dial | Opponent damage |
 | --- | --- | --- | --- |
 | ![Startup](docs/previews/startup.png) | ![Setup](docs/previews/setup.png) | ![Life](docs/previews/watch-face.png) | ![Damage](docs/previews/ui-opponent.png) |
+
+## Latest UI updates
+
+- The name keyboard uses gentle curved rows. Green **OK** is above the name; **CHANGE** is an inset bottom button, and **Back** remains alone in the center.
+- **123/ABC** and **DEL** are positioned above the keys beside Back. CHANGE affects only the draft until OK confirms it.
+- The Multi Arcana main face shows your saved name above the heart. In every mode the **heart/skull is above the gear** and the **battery is below it**.
+- The watch-face, multiplayer and keyboard screenshots reflect these layouts. All eight test suites pass for version 0.14.3.
 
 ## Build and run on Windows
 
@@ -62,7 +69,7 @@ Startup offers **New game** and **Continue**. Continue is greyed out when there 
 
 New game opens a horizontally divided radial screen: **SINGLE ARCANA** above, **MULTI ARCANA** below, with Back in the middle. Single continues to the existing format/player setup.
 
-Multi opens name entry: the name appears above the central Back button and a compact QWERTY keyboard below it. `123` switches to digits/hyphen/underscore, `SP` adds a space, `DEL` deletes, and `OK` confirms. Names use 1-12 ASCII letters/digits/spaces/hyphen/underscore. The device profile stores both the name and a stable device ID independently from match saves, so new games and application shutdown never reset the name. Saving failure keeps the previous name.
+Multi opens name entry: the name appears above the central Back button and a compact QWERTY keyboard curved around it. Three shallow curved rows keep the letters upright and closer to a standard keyboard. A prominent green **OK button above the name** confirms it. Back stays alone in the black central circle. **CHANGE** sits in an inset bottom button below the keyboard; it clears the draft without overwriting the saved name until OK is pressed. The `123`/`ABC` toggle and `DEL` sit in the gaps above the keys, on either side of Back. `123` switches to digits/hyphen/underscore, `SP` adds a space, `DEL` deletes, and `OK` confirms. Names use 1-12 ASCII letters/digits/spaces/hyphen/underscore. The device profile stores both the name and a stable device ID independently from match saves, so new games and application shutdown never reset the name. Saving failure keeps the previous name.
 
 | Discovered games | Joined lobby | Live named face |
 | --- | --- | --- |
@@ -136,13 +143,13 @@ The main-face **Undo** reverses the entire group of game edits from the precedin
 
 ### Battery and brightness
 
-The horizontal battery icon sits opposite the heart across the gear center. It displays six bands: **0-5%, 6-20%, 21-40%, 41-60%, 61-80%, 81-100%**, plus charging and unknown states. The simulator uses an illustrative 75% reading; a hardware adapter must provide real telemetry. Battery-saving behavior and battery-runtime estimates are not implemented.
+The horizontal battery icon sits below the gear, mirrored against the heart above it in every life-face mode. Multi also displays your saved name above the upper heart/skull. The battery displays six bands: **0-5%, 6-20%, 21-40%, 41-60%, 61-80%, 81-100%**, plus charging and unknown states. The simulator uses an illustrative 75% reading; a hardware adapter must provide real telemetry. Battery-saving behavior and battery-runtime estimates are not implemented.
 
 **Brightness** is adjustable from **0-100%** by slider, +/- sectors or rotary input. The desktop previews it using display opacity; physical backlight control needs the hardware driver. Brightness is session-only. If set to 0%, clockwise encoder input raises it again.
 
 ## Gear menu
 
-The gear sits centrally between the two parts of the white life total, with a smooth red heart beneath it and no LIFE caption. The life title is omitted; the center divider is green above the gear and red below, matching the corresponding colored inner ring segments. It opens:
+The gear sits centrally between the two parts of the white life total, with the red heart above it, the battery below it and no LIFE caption. The life title is omitted; the center divider is green above the gear and red below, matching the corresponding colored inner ring segments. It opens:
 
 - **New Game:** asks Yes/No, then opens Single/Multi selection and the chosen setup flow. The current match is replaced only on Confirm; cancelling preserves it.
 - **Flip Coin:** shows a random Heads/Tails result, with Flip again and central Back.

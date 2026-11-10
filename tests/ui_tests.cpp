@@ -44,7 +44,7 @@ lv_obj_t* find(lv_obj_t* parent,const std::string& text) {
 void click(const std::string& text) {
  tick();auto* target=find(lv_screen_active(),text);auto* wedgeLabel=(text.size()==2&&text[0]=='P'&&text[1]>='2'&&text[1]<='6')?target:nullptr;check(target!=nullptr,"missing label: "+text);auto* labelTarget=target;bool wedge=target==wedgeLabel||text=="New Game"||text=="Flip Coin"||text=="Roll"||text=="End Game"||text=="Brightness";
  while(target && !lv_obj_check_type(target,&lv_button_class))target=lv_obj_get_parent(target);
- check(target!=nullptr,"no button for: "+text);wedge=wedge||((lv_obj_get_width(target)==300||lv_obj_get_width(target)==326)&&lv_obj_get_height(target)==lv_obj_get_width(target));
+ check(target!=nullptr,"no button for: "+text);wedge=wedge||((lv_obj_get_width(target)==300||lv_obj_get_width(target)==326||lv_obj_get_width(target)==340)&&lv_obj_get_height(target)==lv_obj_get_width(target));
  lv_obj_scroll_to_view_recursive(target,LV_ANIM_OFF);lv_obj_update_layout(lv_screen_active());tick();
  lv_area_t a;lv_obj_get_coords(wedge?labelTarget:target,&a);int x=(a.x1+a.x2)/2,y=(a.y1+a.y2)/2;
  check(x>=0&&x<size&&y>=0&&y<size,"offscreen button: "+text);
@@ -57,6 +57,7 @@ lv_obj_t* labelAt(lv_obj_t* parent,int x,int y) {
 void checkDeath(const std::string& reason) {
  auto* skull=find(lv_screen_active(),"\xef\x95\x8c");auto* explanation=find(lv_screen_active(),reason);
  check(skull&&explanation,"skull and defeat reason present");
+ lv_area_t marker;lv_obj_get_coords(skull,&marker);check(marker.y1==120&&marker.y2<168,"skull uses the new upper heart position");
  check(lv_color_eq(lv_obj_get_style_text_color(skull,0),lv_color_white())&&lv_color_eq(lv_obj_get_style_text_color(explanation,0),lv_color_white()),"skull and reason are white");
 }
 void clickAt(int x,int y) {hardware.setTouch({x,y,true});tick(5);hardware.setTouch({x,y,false});tick(5);}
@@ -210,14 +211,14 @@ int main() {
  std::vector<uint32_t> previousBattery;int previousBand=-1;
  for(unsigned percent: {0u,5u,6u,20u,21u,40u,41u,60u,61u,80u,81u,100u}) {
   hardware.setBattery(percent);tick();
-  std::vector<uint32_t> indicator;for(int y=133;y<145;++y)for(int x=166;x<192;++x)indicator.push_back(pixels[y*size+x]);
+  std::vector<uint32_t> indicator;for(int y=236;y<248;++y)for(int x=166;x<192;++x)indicator.push_back(pixels[y*size+x]);
   int band=percent<=5?0:percent<=20?1:percent<=40?2:percent<=60?3:percent<=80?4:5;
   if(previousBand>=0)check((indicator==previousBattery)==(band==previousBand),"battery renders correct threshold transitions");
   previousBattery=indicator;previousBand=band;
   screenshot(("ui-battery-"+std::to_string(percent)+".bmp").c_str());
  }
  hardware.setBattery(50,true);tick();screenshot("ui-battery-charging.bmp");
- clickAt(180,139);check(game.player().life==41,"battery overlay leaves underlying life touch active");
+ clickAt(180,242);check(game.player().life==41,"battery overlay leaves underlying life touch active");
  hardware.setBattery(75);tick();
  for(auto entry:std::vector<std::pair<const char*,std::int64_t>>{{"Classic",20},{"Brawl",25},{"Limited",20}}){
   game.endGame();ui.showStartup();tick(12);check(find(lv_screen_active(),"LIFE COUNTER")&&!find(lv_screen_active(),"COMMANDER LIFE COUNTER"),"startup title has no Commander prefix");
@@ -254,17 +255,20 @@ int main() {
  ProfileMemory profileMemory;mtg::DeviceProfile identity(&profileMemory);UIWire wire;mtg::Multiplayer networking(game,identity,wire);
  game.endGame();mtg::AppUI multiUI(game,hardware,device,random,&identity,&networking);app=&multiUI;tick(12);
  click("New game");screenshot("ui-arcana-mode.bmp");click("MULTI ARCANA");
- for(const char* key:{"A","L","I","C","E"})click(key);check(find(lv_screen_active(),"ALICE"),"name keyboard composes a name");screenshot("ui-name-keyboard.bmp");click("OK");
+ for(char character:std::string("ABCDEFGHIJKLMNOPQRSTUVWXYZ")){click(std::string(1,character));auto* entered=labelAt(lv_screen_active(),180,96);check(entered&&std::string(lv_label_get_text(entered))==std::string(1,character),"all curved letter keys are reachable");click("DEL");}
+ click("123");for(char character:std::string("0123456789-_")){click(std::string(1,character));auto* entered=labelAt(lv_screen_active(),180,96);check(entered&&std::string(lv_label_get_text(entered))==std::string(1,character),"all curved symbol keys are reachable");click("DEL");}screenshot("ui-name-symbol-keyboard.bmp");click("ABC");
+ click("A");click("SP");click("B");check(find(lv_screen_active(),"A B"),"curved space key inserts a space");click("DEL");click("DEL");click("DEL");
+ for(const char* key:{"A","L","I","C","E"})click(key);check(find(lv_screen_active(),"ALICE"),"name keyboard composes a name");screenshot("ui-name-keyboard.bmp");auto* changeLabel=find(lv_screen_active(),"CHANGE");lv_area_t changeArea;lv_obj_get_coords(lv_obj_get_parent(changeLabel),&changeArea);check(changeArea.y1>=300&&changeArea.y2<335,"CHANGE is an inset bottom button");auto* backLabel=find(lv_screen_active(),"Back");lv_area_t backArea;lv_obj_get_coords(lv_obj_get_parent(backLabel),&backArea);check(backArea.y1==136&&backArea.y2==223,"Back remains centered in its original circle");check(!find(lv_screen_active(),"YOUR NAME"),"OK replaces the old name heading");click("CHANGE");check(find(lv_screen_active(),"Enter your name")&&identity.name().empty(),"CHANGE clears only the unsaved draft");for(const char* key:{"A","L","I","C","E"})click(key);click("OK");check(find(lv_screen_active(),"Host"),"top OK confirms the name");
  mtg::DeviceProfile rebooted(&profileMemory);check(rebooted.load()&&rebooted.name()=="ALICE"&&rebooted.id()==identity.id(),"saved name survives a new profile reader");screenshot("ui-host-join.bmp");click("Join");check(find(lv_screen_active(),"Refresh"),"join opens discovery screen");
  using Json=nlohmann::json;const std::string bobId(32,'b');
  wire.incoming.push_back({"remote",Json{{"v",1},{"t","advert"},{"game","bob-game"},{"name","BOB"},{"format",0},{"capacity",4},{"joined",1},{"started",false}}.dump()});tick(12);check(find(lv_screen_active(),"BOB"),"host name appears in browser");screenshot("ui-discovered-games.bmp");click("BOB");
  auto networkState=[&](unsigned seq,bool started,int bobLife){return Json{{"v",1},{"t","state"},{"game","bob-game"},{"seq",seq},{"format",0},{"capacity",4},{"started",started},{"members",Json::array({Json{{"id",bobId},{"name","BOB"},{"seat",1},{"life",bobLife},{"counters",std::array<int,8>{}},{"ack",0},{"online",true}},Json{{"id",identity.id()},{"name","ALICE"},{"seat",2},{"life",40},{"counters",std::array<int,8>{}},{"ack",0},{"online",true}}})}}.dump();};
  wire.incoming.push_back({"remote",networkState(1,false,40)});tick(12);check(find(lv_screen_active(),"Waiting"),"joined guest waits for host start");screenshot("ui-network-lobby.bmp");
- wire.incoming.push_back({"remote",networkState(2,true,40)});tick(12);check(find(lv_screen_active(),"BOB")&&!find(lv_screen_active(),"P2"),"registered name replaces player number");screenshot("ui-multi-home.bmp");
+ wire.incoming.push_back({"remote",networkState(2,true,40)});tick(12);check(find(lv_screen_active(),"BOB")&&!find(lv_screen_active(),"P2"),"registered name replaces player number");auto* ownName=labelAt(lv_screen_active(),180,112);check(ownName&&std::string(lv_label_get_text(ownName))=="ALICE","own saved name appears above the upper icon in Multi");screenshot("ui-multi-home.bmp");
  click("BOB");check(find(lv_screen_active(),"Synced"),"remote player life is read-only");rotate(5);check(game.player().life==40&&networking.opponents()[0].life==40,"guest cannot edit another player's life");
  wire.incoming.push_back({"remote",networkState(3,true,32)});tick(12);check(find(lv_screen_active(),"32"),"remote life refreshes in player menu");screenshot("ui-multi-opponent.bmp");click("Back");
  click(LV_SYMBOL_SETTINGS);click("New Game");click("Yes");click("SINGLE ARCANA");click("Commander");click("Confirm");check(identity.name()=="ALICE"&&!networking.attached(),"new single game preserves identity and leaves network");
- click(LV_SYMBOL_SETTINGS);click("New Game");click("Yes");click("MULTI ARCANA");check(find(lv_screen_active(),"ALICE"),"name entry remembers saved name");click("OK");click("Host");click("Classic");click("Confirm");check(networking.hosting()&&find(lv_screen_active(),"Start game"),"host configures a real lobby");click("Start game");check(networking.started()&&find(lv_screen_active(),"P2"),"host starts with one device and displays an open slot");click("P2");check(find(lv_screen_active(),"Open slot"),"unclaimed peer has a clear placeholder screen");click("+");check(networking.opponents()[0].life==21&&game.player().life==20,"host tracks a player without an Arcana");screenshot("ui-open-network-slot.bmp");click("Back");
+ click(LV_SYMBOL_SETTINGS);click("New Game");click("Yes");click("MULTI ARCANA");check(find(lv_screen_active(),"ALICE"),"name entry remembers saved name");click("CHANGE");check(identity.name()=="ALICE","CHANGE preserves the previously saved name");for(const char* key:{"A","L","I","C","E"})click(key);click("OK");click("Host");click("Classic");click("Confirm");check(networking.hosting()&&find(lv_screen_active(),"Start game"),"host configures a real lobby");click("Start game");check(networking.started()&&find(lv_screen_active(),"P2"),"host starts with one device and displays an open slot");click("P2");check(find(lv_screen_active(),"Open slot"),"unclaimed peer has a clear placeholder screen");click("+");check(networking.opponents()[0].life==21&&game.player().life==20,"host tracks a player without an Arcana");screenshot("ui-open-network-slot.bmp");click("Back");
  wire.incoming.push_back({"visitor",Json{{"v",1},{"t","find"}}.dump()});tick();std::string hostedId;for(const auto& packet:wire.sent){auto value=Json::parse(packet.data);if(value["t"]=="advert")hostedId=value["game"].get<std::string>();}check(!hostedId.empty(),"host advertises its lobby");
  wire.incoming.push_back({"guest",Json{{"v",1},{"t","join"},{"game",hostedId},{"id",std::string(32,'c')},{"name","CAROL"}}.dump()});tick(12);check(find(lv_screen_active(),"CAROL")&&!find(lv_screen_active(),"P2")&&game.player().life==20&&networking.opponents()[0].life==21,"late join replaces the placeholder while preserving tracked HP");screenshot("ui-late-joined-player.bmp");
  lv_deinit();std::cout<<"All round-screen counter interaction checks passed\n";

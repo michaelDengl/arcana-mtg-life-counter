@@ -138,12 +138,16 @@ void AppUI::buildDial() {
   }
   auto* upper=box(screen_,180,82,1,108,teal);lv_obj_remove_flag(upper,LV_OBJ_FLAG_CLICKABLE);
   auto* lower=box(screen_,180,190,1,108,red);lv_obj_remove_flag(lower,LV_OBJ_FLAG_CLICKABLE);
-  battery_=box(screen_,166,132,28,14,background);lv_obj_set_style_bg_opa(battery_,0,0);lv_obj_remove_flag(battery_,LV_OBJ_FLAG_CLICKABLE);
+  battery_=box(screen_,166,235,28,14,background);lv_obj_set_style_bg_opa(battery_,0,0);lv_obj_remove_flag(battery_,LV_OBJ_FLAG_CLICKABLE);
   value_=label(screen_,"4",94,161,68,&life_digits,ink);
   lifeRight_=label(screen_,"0",198,161,68,&life_digits,ink);
   lifeSegments(screen_);
   arc(screen_,224,78,0,360,violet,2);
-  lifeMarker_=heart(screen_,162,223);
+  lifeMarker_=heart(screen_,162,120);
+  if(networkFace()){
+   const auto& name=profile_->name();const auto* font=lv_text_get_width(name.c_str(),static_cast<uint32_t>(name.size()),&lv_font_montserrat_14,0)>128?&tab_font:&lv_font_montserrat_14;
+   label(screen_,name,92,104,176,font,ink);
+  }
   status_=label(screen_,"",95,260,170,&lv_font_montserrat_14,teal);
   lv_label_set_long_mode(status_,LV_LABEL_LONG_WRAP);lv_obj_set_height(status_,34);
   partialDividers();

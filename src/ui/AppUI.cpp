@@ -89,6 +89,7 @@ void AppUI::handle(Action action,std::uint32_t arg) {
   case SingleArcana:hostPending_=false;beginFormatSelection(View::ArcanaMode);break;
   case MultiArcana:nameDraft_=profile_->name();nameSymbols_=false;navigate(View::NameSetup);break;
   case NameKey:if(nameDraft_.size()<12)nameDraft_+=static_cast<char>(arg);break;
+  case NameChange:nameDraft_.clear();notice_.clear();break;
   case NameDelete:if(!nameDraft_.empty())nameDraft_.pop_back();break;
   case NameSpace:if(!nameDraft_.empty()&&nameDraft_.size()<12&&nameDraft_.back()!=' ')nameDraft_+=' ';break;
   case NameSymbols:nameSymbols_=!nameSymbols_;rebuild_=true;break;
