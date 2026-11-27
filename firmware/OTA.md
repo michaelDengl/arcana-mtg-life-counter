@@ -46,6 +46,10 @@ Packaging checks the built image's project, embedded version and size, then crea
 
 The included GitHub Actions workflow builds a version tag or an explicitly selected existing tag, uploads reviewable artifacts and prepares a **draft** release. Review the build and release before publishing. Devices ignore drafts and prereleases, and compare the latest stable release numerically against the installed version. Never put Wi-Fi passwords or GitHub credentials in the firmware/repository.
 
+## Version 0.17.4
+
+Cinder & Hex uses new portrait artwork. This release uses the existing application-only OTA layout.
+
 ## Version 0.17.3
 
 After Dark and Cinder & Hex are available on page four of **Gear > Watch Face**. The two illustrated faces are included in the application image and use the existing application-only layout.

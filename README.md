@@ -1,8 +1,8 @@
 # Arcana / MTG Life Counter
 
-**Version 0.17.3** adds **After Dark** and **Cinder & Hex** to the knob and the desktop Face Studio. Both use original fantasy portraits.
+**Version 0.17.4** refreshes the **Cinder & Hex** watch face with new violet-and-ember portraits on the knob and in the desktop Face Studio.
 
-Install [v0.17.3](https://github.com/michaelDengl/arcana-mtg-life-counter/releases/tag/v0.17.3) from the knob's **Update** button after checking for updates over Wi-Fi. Bluetooth remains experimental. Wi-Fi remains selectable for multiplayer and firmware updates.
+Install [v0.17.4](https://github.com/michaelDengl/arcana-mtg-life-counter/releases/tag/v0.17.4) from the knob's **Update** button after checking for updates over Wi-Fi. Bluetooth remains experimental. Wi-Fi remains selectable for multiplayer and firmware updates.
 
 A native Windows digital twin of a round 360 x 360 knob display, with the same LVGL interface running on the ESP32-S3 knob. The app supports Commander, Classic, Commander 2HG, Brawl and Limited, with in-memory matches and a touch/rotary interface.
 

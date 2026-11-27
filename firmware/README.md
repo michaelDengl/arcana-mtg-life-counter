@@ -1,6 +1,8 @@
 # ARCANA on Guition JC3636K718
 
-**v0.17.3:** Adds After Dark and Cinder & Hex on the fourth **Gear > Watch Face** page. Both use static RGB565 art embedded in the firmware. The watch-face choice persists alongside existing display settings. Install [v0.17.3](https://github.com/michaelDengl/arcana-mtg-life-counter/releases/tag/v0.17.3) through the knob's **Update** menu.
+**v0.17.4** refreshes the artwork for Cinder & Hex on the fourth **Gear > Watch Face** page. Install [v0.17.4](https://github.com/michaelDengl/arcana-mtg-life-counter/releases/tag/v0.17.4) through the knob's **Update** menu.
+
+**v0.17.3** added After Dark and Cinder & Hex. Both use static RGB565 art embedded in the firmware. The watch-face choice persists alongside existing display settings.
 
 **v0.17.2:** About links to **https://nova-dynamics.ch** and displays a QR code for the website. The MagicTG Kreuzlingen group link remains available. This build booted successfully on a physical knob after USB installation. Knobs with the existing OTA layout can install [v0.17.2](https://github.com/michaelDengl/arcana-mtg-life-counter/releases/tag/v0.17.2) wirelessly.
 
