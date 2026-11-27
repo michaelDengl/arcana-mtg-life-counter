@@ -1,8 +1,8 @@
 # Arcana / MTG Life Counter
 
-**Version 0.17.2** - About now links to the Nova Dynamics homepage with a scannable website QR code. Includes the v0.17.1 wake-protection fix, configurable idle display and experimental Bluetooth LE multiplayer.
+**Version 0.17.3** adds **After Dark** and **Cinder & Hex** to the knob and the desktop Face Studio. Both use original fantasy portraits.
 
-Install [v0.17.2](https://github.com/michaelDengl/arcana-mtg-life-counter/releases/tag/v0.17.2) from the knob's **Update** button after checking for updates over Wi-Fi. Bluetooth remains experimental. Wi-Fi remains selectable for multiplayer and firmware updates.
+Install [v0.17.3](https://github.com/michaelDengl/arcana-mtg-life-counter/releases/tag/v0.17.3) from the knob's **Update** button after checking for updates over Wi-Fi. Bluetooth remains experimental. Wi-Fi remains selectable for multiplayer and firmware updates.
 
 A native Windows digital twin of a round 360 x 360 knob display, with the same LVGL interface running on the ESP32-S3 knob. The app supports Commander, Classic, Commander 2HG, Brawl and Limited, with in-memory matches and a touch/rotary interface.
 
@@ -31,7 +31,7 @@ Open **Gear > Display**. All five choices are saved independently of your match:
 | --- | --- | --- |
 | Brightness | Existing saved level | Normal display brightness, 0?100%. |
 | Dim After | 5 seconds | Encoder or +/- selects 1?300 seconds; 0 means Never. |
-| Life Only | OFF | On the own-life face, idle hides the artwork and shows only a centred life total on black, on all twelve faces. |
+| Life Only | OFF | On the own-life face, idle hides the artwork and shows only a centred life total on black. |
 | Wake Protection | OFF | OFF: the first touch or wheel turn wakes and acts immediately. ON: the first tap/initial wheel burst only wakes. Works even below 10% manual brightness. |
 | Idle Brightness | 10% | Idle backlight level, capped at the selected normal brightness. |
 
@@ -43,11 +43,15 @@ BLE supports up to nine connected guests plus the host; additional game seats ca
 
 ## Watch faces and saved display settings
 
-Open **Gear > Watch Face** during a match. Browse the three radial pages using **Next** and **Previous**, then tap a design to apply it. A check mark identifies the current choice; **Back** returns to settings. Selection preserves life, counters, Undo history and multiplayer state, and remains selected after restart and new games.
+Open **Gear > Watch Face** during a match. Browse the four radial pages using **Next** and **Previous**, then tap a design to apply it. A check mark identifies the current choice; **Back** returns to settings. Selection preserves life, counters, Undo history and multiplayer state, and remains selected after restart and new games.
 
-The twelve designs are **Original**, **Azure Comet**, **Copper Petal**, **Neon Circuit**, **Citrus Relay**, **Sunset Meridian**, **Verdant**, **Prism**, **Obsidian**, **Magenta Ledger**, **Ember Forge** and **Mana Confluence**. Original and Ember Forge retain their approved appearance. The other layouts use distinct arrangements; Neon Circuit, Verdant, Prism and Obsidian keep their approved palettes. Citrus Relay has top + / bottom - life regions; the other faces use left - / right +. All include opponent controls, both counter shortcuts, settings, recent Undo, battery and lethal warnings.
+The fourteen designs are **Original**, **Azure Comet**, **Copper Petal**, **Neon Circuit**, **Citrus Relay**, **Sunset Meridian**, **Verdant**, **Prism**, **Obsidian**, **Magenta Ledger**, **Ember Forge**, **Mana Confluence**, **After Dark** and **Cinder & Hex**. Citrus Relay has top + / bottom - life regions. The other faces use left - / right +. All include opponent controls, both counter shortcuts, settings, recent Undo, battery and lethal warnings.
 
-![All twelve ARCANA watch faces](docs/previews/watch-faces.png)
+![The first twelve ARCANA watch faces](docs/previews/watch-faces.png)
+
+| After Dark | Cinder & Hex |
+| --- | --- |
+| ![After Dark](docs/previews/after-dark.png) | ![Cinder & Hex](docs/previews/cinder-hex.png) |
 
 Mana Confluence keeps all life, counter, multiplayer, Undo, battery and lethal-warning controls. It appears on the existing third selector page and is remembered after restart. Its five-mana artwork is static; it does not animate while idle.
 

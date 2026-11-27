@@ -5,6 +5,10 @@
 #include "ui/Widgets/DialWidgets.hpp"
 #include <cmath>
 #include <cstring>
+extern "C" {
+ LV_IMAGE_DECLARE(arcana_after_dark_art);
+ LV_IMAGE_DECLARE(arcana_cinder_hex_art);
+}
 namespace mtg {
 using namespace widgets;
 namespace {
@@ -63,7 +67,7 @@ void AppUI::buildFaceLayout(){
  auto line=[&](int x1,int y1,int x2,int y2,unsigned color,int width=1){tabEdgePoints_.push_back({lv_point_precise_t{x1,y1},lv_point_precise_t{x2,y2}});auto* o=lv_line_create(art);lv_line_set_points(o,tabEdgePoints_.back().data(),2);lv_obj_set_style_line_color(o,lv_color_hex(color),0);lv_obj_set_style_line_width(o,width,0);lv_obj_set_style_line_rounded(o,true,0);lv_obj_remove_flag(o,LV_OBJ_FLAG_CLICKABLE);};
  auto arc=[&](int cx,int cy,int diameter,unsigned start,unsigned end,unsigned color,int width=1){auto* o=lv_arc_create(art);lv_obj_set_size(o,diameter,diameter);lv_obj_set_pos(o,cx-diameter/2,cy-diameter/2);lv_obj_remove_style(o,nullptr,LV_PART_KNOB);lv_obj_set_style_arc_opa(o,0,LV_PART_INDICATOR);lv_obj_set_style_arc_color(o,lv_color_hex(color),LV_PART_MAIN);lv_obj_set_style_arc_width(o,width,LV_PART_MAIN);lv_obj_set_style_arc_rounded(o,false,LV_PART_MAIN);lv_arc_set_bg_angles(o,start,end);lv_obj_remove_flag(o,LV_OBJ_FLAG_CLICKABLE);};
  unsigned faint=tint(p.background,p.accent,.22);
- if(id!=8&&id!=11)arc(180,180,344,0,360,faint,id==3?2:1);
+ if(id!=8&&id<11)arc(180,180,344,0,360,faint,id==3?2:1);
  switch(id){
   case 1:
    arc(186,174,320,120,235,p.accent,2);arc(186,174,306,125,230,faint);
@@ -116,10 +120,27 @@ void AppUI::buildFaceLayout(){
    }
    break;
   }
+  case cinderHexFace:
+  case afterDarkFace: {
+   auto* portrait=lv_image_create(art);
+   lv_image_set_src(portrait,id==afterDarkFace?&arcana_after_dark_art:&arcana_cinder_hex_art);
+   lv_obj_set_pos(portrait,0,0);
+   lv_obj_remove_flag(portrait,LV_OBJ_FLAG_CLICKABLE);
+   if(id==afterDarkFace){
+    arc(180,180,349,0,360,tint(p.background,p.accent,.60));
+    line(145,226,215,226,tint(p.background,p.accent,.64));
+   }else{
+    arc(180,180,348,96,264,tint(p.background,p.secondary,.76),2);
+    arc(180,180,348,276,84,tint(p.background,p.accent,.76),2);
+    line(147,220,173,220,tint(p.background,p.secondary,.78));
+    line(187,220,213,220,tint(p.background,p.accent,.78));
+   }
+   break;
+  }
  }
  auto targets=l.lifeTargets();
  for(unsigned sign=0;sign<2;++sign){auto r=targets[sign];auto* half=box(screen_,r.x,r.y,r.w,r.h,tint(p.surface,sign?p.gain:p.loss,id==8?.015:id==3?.05:.09));
-  lv_obj_set_style_radius(half,id==3?5:id==4?20:14,0);if(id==7||id==9||id==8||id==11)lv_obj_set_style_bg_opa(half,0,0);
+  lv_obj_set_style_radius(half,id==3?5:id==4?20:14,0);if(id==7||id==8||id==9||id>=11)lv_obj_set_style_bg_opa(half,0,0);
   bindings_.push_back({this,sign?Plus:Minus,sign});lv_obj_add_event_cb(half,lifeTouch,LV_EVENT_ALL,&bindings_.back());layoutLifeTargets_[sign]=half;layoutControls_.push_back(half);
  }
  auto action=[&](FaceRect r,const std::string& title,Action a,unsigned arg,unsigned accent,bool round=false){
@@ -144,6 +165,10 @@ void AppUI::buildFaceLayout(){
  if(networkFace())label(screen_,profile_->name(),l.name.x,l.name.y,l.name.w,&tab_font,p.ink);
  else if(id==11)label(screen_,"YOUR LIFE",l.name.x,l.name.y,l.name.w,&tab_font,p.muted);
  if(id==11){label(screen_,"-",86,177,20,&lv_font_montserrat_14,p.loss);label(screen_,"+",254,177,20,&lv_font_montserrat_14,p.gain);}
+ if(id==afterDarkFace||id==cinderHexFace){
+  label(screen_,"-",126,214,18,&lv_font_montserrat_14,p.loss);
+  label(screen_,"+",216,214,18,&lv_font_montserrat_14,p.gain);
+ }
  if(l.vertical){label(screen_,"+",l.life.x+l.life.w-24,l.life.y+7,16,&lv_font_montserrat_14,p.gain);label(screen_,"-",l.life.x+l.life.w-24,l.life.y+l.life.h-22,16,&lv_font_montserrat_14,p.loss);}
  // Large tables use two complete rows, rather than overlapping top controls.
  unsigned drawn=0,rows=opponents>5?2:1;
@@ -165,7 +190,7 @@ void AppUI::refreshFaceLayout(){
  auto number=std::to_string(game_.player().life);
  if(l.format==FaceNumberFormat::Padded){if(game_.player().life>=0)while(number.size()<3)number="0"+number;else if(number.size()<3)number.insert(1,"0");}
  if(l.format==FaceNumberFormat::Split){if(game_.player().life>=0&&number.size()<2)number="0"+number;auto split=(number.size()+1)/2;fitText(value_,number.substr(0,split),l.value,&life_digits,p.ink,l.numberScale);fitText(lifeRight_,number.substr(split),l.rightValue,&life_digits,p.ink,l.numberScale);}
- else if(faceDesign_==11){
+ else if(faceDesign_>=11){
   // Use native bitmap sizes: clipped resampling can otherwise leave edge pixels.
   const lv_font_t* font=&tab_font;
   for(const auto* candidate:{&mana_life_digits,&life_digits,&lv_font_montserrat_48,&lv_font_montserrat_32,&lv_font_montserrat_20,&lv_font_montserrat_14,&tab_font})

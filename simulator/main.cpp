@@ -98,7 +98,7 @@ int main(int argc,char** argv) {
   else if(arg=="--face-studio"){}
   else if(arg=="--face-design"&&i+1<argc){try{initialDesign=static_cast<unsigned>(std::stoul(argv[++i]));}catch(...){return 2;}if(initialDesign>=mtg::faceDesigns.size())return 2;}
   else if(arg=="--export-faces"&&i+1<argc)exportDirectory=argv[++i];
-  else {std::cerr<<"Usage: mtg_simulator [--face-studio] [--face-design 0..11] [--export-faces directory] [--smoke-test | --startup-test] [--profile-file path]\n";return 2;}
+  else {std::cerr<<"Usage: mtg_simulator [--face-studio] [--face-design 0.."<<mtg::faceDesignCount-1<<"] [--export-faces directory] [--smoke-test | --startup-test] [--profile-file path]\n";return 2;}
  }
  const bool studio=!smoke;if(studio){W=1240;H=760;pixels.assign(W*H,0);}
  SDL_SetMainReady();
@@ -144,15 +144,15 @@ int main(int argc,char** argv) {
  mtg::SimulatorRandom random;mtg::AppUI ui(game,hardware,device,random,&profile,&multiplayer);app=&ui;if(initialDesign>=mtg::faceDesignCount)initialDesign=ui.faceDesign();
  lv_obj_t* stats=nullptr;
  if(studio){
-  text(root,"ARCANA / FACE STUDIO",24,25,0xe7f1f4);text(root,"Twelve shared watch faces. Choose your design in Gear > Watch Face.",24,55,0x81a5b7);
-  card(24,101,258,537);text(root,"CHOOSE A FACE",42,116,0x81a5b7);
+  text(root,"ARCANA / FACE STUDIO",24,25,0xe7f1f4);text(root,"Choose a design here or in Gear > Watch Face.",24,55,0x81a5b7);
+  card(24,101,258,568);text(root,"CHOOSE A FACE",42,116,0x81a5b7);
   for(unsigned i=0;i<mtg::faceDesigns.size();++i){
-   auto* b=lv_button_create(root);designButtons[i]=b;lv_obj_set_pos(b,36,143+i*40);lv_obj_set_size(b,234,35);lv_obj_set_style_radius(b,9,0);lv_obj_set_style_border_width(b,1,0);lv_obj_set_style_shadow_width(b,0,0);
+   auto* b=lv_button_create(root);designButtons[i]=b;lv_obj_set_pos(b,36,143+i*37);lv_obj_set_size(b,234,33);lv_obj_set_style_radius(b,9,0);lv_obj_set_style_border_width(b,1,0);lv_obj_set_style_shadow_width(b,0,0);
    auto* chip=lv_obj_create(b);lv_obj_set_pos(chip,0,0);lv_obj_set_size(chip,5,20);lv_obj_set_style_bg_color(chip,lv_color_hex(mtg::faceDesigns[i].accent),0);lv_obj_set_style_border_width(chip,0,0);lv_obj_set_style_radius(chip,2,0);lv_obj_set_style_pad_all(chip,0,0);lv_obj_remove_flag(chip,LV_OBJ_FLAG_CLICKABLE);lv_obj_remove_flag(chip,LV_OBJ_FLAG_SCROLLABLE);
    auto* caption=lv_label_create(b);auto name=(i<10?"0":"")+std::to_string(i)+"  "+mtg::faceDesigns[i].name;lv_label_set_text(caption,name.c_str());lv_obj_set_pos(caption,17,1);lv_obj_set_style_text_color(caption,lv_color_hex(0xe0edf1),0);
    lv_obj_add_event_cb(b,event,LV_EVENT_CLICKED,reinterpret_cast<void*>(static_cast<intptr_t>(100+i)));
   }
-  card(24,655,258,76);text(root,"[ / ]  Previous / next design",42,670,0xc6d2dd);text(root,"Switching keeps your match.",42,698,0x81a5b7);
+  card(24,679,258,63);text(root,"[ / ]  Previous / next design",42,690,0xc6d2dd);text(root,"Switching keeps your match.",42,714,0x81a5b7);
   designName=text(root,"",392,107);lv_obj_set_style_text_font(designName,&lv_font_montserrat_20,0);
   designDescription=text(root,"",392,137,0x81a5b7);lv_obj_set_width(designDescription,420);lv_label_set_long_mode(designDescription,LV_LABEL_LONG_WRAP);lv_obj_set_height(designDescription,34);
   card(392,620,420,111);text(root,"PALETTE / LIVE CONTROLS",411,635,0x81a5b7);

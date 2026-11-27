@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <algorithm>
+#include "core/DeviceSettings.hpp"
 namespace mtg {
 struct FaceRect {
  int x=0,y=0,w=0,h=0;
@@ -19,7 +20,7 @@ struct FaceLayout {
   int half=life.w/2;return {{{life.x,life.y,half,life.h},{life.x+half,life.y,life.w-half,life.h}}};
  }
 };
-inline bool redesignedFace(unsigned id){return (id>0&&id<10)||id==11;}
+inline bool redesignedFace(unsigned id){return (id>0&&id<10)||(id>=11&&id<faceDesignCount);}
 inline FaceCounterLayout counterBar(int x,int y,int w,int h){
  int step=w>=112?28:26;return {{x,y,step,h},{x+step+2,y,w-2*step-4,h},{x+w-step,y,step,h}};
 }
@@ -63,6 +64,18 @@ inline FaceLayout faceLayout(unsigned id,unsigned opponents=3){
   case 11:
    p.life={82,143,196,84};p.value={95,145,170,79};p.heart={78,94,32,32};p.battery={250,105,28,14};p.gear={163,88,34,34};p.undo={134,314,92,28};p.status={111,229,138,14};p.name={108,125,144,12};p.playersY=36;p.numberScale=1.4;
    p.counters={counterBar(54,246,116,37),counterBar(190,246,116,37)};break;
+  case afterDarkFace:
+   p.life={104,142,152,87};p.value={107,148,146,71};
+   p.heart={163,112,34,30};p.battery={166,246,28,14};p.status={98,232,164,13};
+   p.name={104,92,152,16};p.gear={206,302,36,34};p.undo={114,305,80,28};
+   p.counters={counterBar(60,264,116,32),counterBar(184,264,116,32)};
+   p.playersY=36;break;
+  case cinderHexFace:
+   p.life={104,139,152,89};p.value={108,147,144,68};
+   p.heart={164,108,32,31};p.battery={166,245,28,14};p.status={97,229,166,14};
+   p.name={108,90,144,15};p.gear={118,303,36,34};p.undo={166,305,80,28};
+   p.counters={counterBar(60,263,116,32),counterBar(184,263,116,32)};
+   p.playersY=34;break;
   default:
    p.life={72,82,216,216};p.value={94,161,68,58};p.rightValue={198,161,68,58};p.heart={162,120,36,37};p.battery={166,235,28,14};p.gear={158,168,44,44};p.undo={145,310,70,28};p.status={95,260,170,34};p.format=FaceNumberFormat::Split;
    p.counters={FaceCounterLayout{{24,245,40,30},{13,173,44,44},{24,129,40,36}},FaceCounterLayout{{302,245,40,30},{303,173,44,44},{302,129,40,36}}};break;

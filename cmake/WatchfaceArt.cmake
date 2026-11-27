@@ -1,0 +1,28 @@
+# Generate aligned LVGL images from native 360 x 360, little-endian RGB565 art.
+# Both the simulator and the ESP32-S3 build consume the same immutable pixels.
+function(arcana_watchface_art out)
+ set(art_dir "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../src/assets/watchfaces")
+ set(source "#include \"lvgl.h\"\n")
+ foreach(face IN ITEMS after_dark cinder_hex)
+  set(asset "${art_dir}/${face}.rgb565")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${asset}")
+  file(SIZE "${asset}" asset_size)
+  if(NOT asset_size EQUAL 259200)
+   message(FATAL_ERROR "${asset} must contain 360 x 360 RGB565 pixels")
+  endif()
+  file(READ "${asset}" pixels HEX)
+  string(APPEND source "\nstatic const uint32_t ${face}_pixels[] = {\n")
+  foreach(row_index RANGE 0 359)
+   math(EXPR offset "1440 * ${row_index}")
+   string(SUBSTRING "${pixels}" ${offset} 1440 row)
+   string(REGEX REPLACE "([0-9a-f][0-9a-f])([0-9a-f][0-9a-f])([0-9a-f][0-9a-f])([0-9a-f][0-9a-f])" "0x\\4\\3\\2\\1," row "${row}")
+   string(APPEND source " ${row}\n")
+  endforeach()
+  string(APPEND source "};\nconst lv_image_dsc_t arcana_${face}_art = {\n"
+   " .header = {.magic = LV_IMAGE_HEADER_MAGIC, .cf = LV_COLOR_FORMAT_RGB565, .w = 360, .h = 360, .stride = 720},\n"
+   " .data_size = sizeof(${face}_pixels), .data = (const uint8_t *)${face}_pixels\n};\n")
+ endforeach()
+ set(generated "${CMAKE_CURRENT_BINARY_DIR}/watchface_art.c")
+ file(CONFIGURE OUTPUT "${generated}" CONTENT "${source}" @ONLY)
+ set(${out} "${generated}" PARENT_SCOPE)
+endfunction()

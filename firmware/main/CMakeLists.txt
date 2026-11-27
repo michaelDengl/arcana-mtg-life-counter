@@ -22,6 +22,9 @@ idf_component_register(
   "${APP_ROOT}/simulator/LanTransport.cpp"
  INCLUDE_DIRS "." "${APP_ROOT}/src" "${APP_ROOT}/simulator"
  REQUIRES driver esp_lcd esp_timer esp_wifi esp_netif nvs_flash spiffs esp_psram esp_pm esp_http_client esp_http_server app_update mbedtls bt)
+include("${APP_ROOT}/cmake/WatchfaceArt.cmake")
+arcana_watchface_art(ARCANA_WATCHFACE_ART)
+target_sources(${COMPONENT_LIB} PRIVATE "${ARCANA_WATCHFACE_ART}")
 target_compile_features(${COMPONENT_LIB} PUBLIC cxx_std_17)
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-error=missing-field-initializers -Wno-error=misleading-indentation)
 # Give the LVGL component the embedded configuration, independently of desktop LVGL.

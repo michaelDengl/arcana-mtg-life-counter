@@ -1,6 +1,6 @@
 #pragma once
 namespace mtg::appInfo {
-inline constexpr const char* version="0.17.2";
+inline constexpr const char* version="0.17.3";
 inline constexpr const char* repository="michaelDengl/arcana-mtg-life-counter";
 inline constexpr const char* repositoryUrl="https://github.com/michaelDengl/arcana-mtg-life-counter";
 inline constexpr const char* creator="Michael Dengl";

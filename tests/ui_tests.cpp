@@ -388,7 +388,16 @@ int main() {
  // Use the real settings path rather than the studio-only shortcut.
  game.startNewGame(4);multiUI.goHome();tick(15);auto matchBeforeStyle=game.serialize();
  click(LV_SYMBOL_SETTINGS);click("Watch Face");check(find(lv_screen_active(),"Original")&&find(lv_screen_active(),"Neon Circuit"),"watch-face menu first page");screenshot("ui-watch-faces.bmp");
- click("Next");check(find(lv_screen_active(),"Citrus Relay")&&find(lv_screen_active(),"Prism"),"watch-face menu second page");click("Next");check(find(lv_screen_active(),"Ember Forge"),"watch-face menu last page");check(find(lv_screen_active(),"Mana Confluence"),"new mana face appears on the existing third page");click("Mana Confluence");check(multiUI.faceDesign()==11&&game.serialize()==matchBeforeStyle,"mana face can be selected without changing the match");click(LV_SYMBOL_SETTINGS);click("Watch Face");click("Previous");click("Prism");
+ click("Next");check(find(lv_screen_active(),"Citrus Relay")&&find(lv_screen_active(),"Prism"),"watch-face menu second page");
+ click("Next");check(find(lv_screen_active(),"Ember Forge")&&find(lv_screen_active(),"Mana Confluence"),"watch-face menu third page");
+ click("Mana Confluence");check(multiUI.faceDesign()==11&&game.serialize()==matchBeforeStyle,"mana face can be selected without changing the match");
+ click(LV_SYMBOL_SETTINGS);click("Watch Face");click("Next");
+ check(find(lv_screen_active(),"After Dark")&&find(lv_screen_active(),"Cinder & Hex"),"illustrated faces have their own fourth page");
+ click("After Dark");check(multiUI.faceDesign()==mtg::afterDarkFace&&game.serialize()==matchBeforeStyle,"After Dark selection preserves the match");
+ click(LV_SYMBOL_SETTINGS);click("Watch Face");click("Cinder & Hex");
+ mtg::DeviceProfile illustratedReboot(&profileMemory);
+ check(multiUI.faceDesign()==mtg::cinderHexFace&&illustratedReboot.load()&&illustratedReboot.faceDesign()==mtg::cinderHexFace&&game.serialize()==matchBeforeStyle,"illustrated faces save their selection without changing the match");
+ click(LV_SYMBOL_SETTINGS);click("Watch Face");click("Previous");click("Previous");click("Prism");
  check(multiUI.faceDesign()==7&&identity.faceDesign()==7&&game.serialize()==matchBeforeStyle,"selecting a face saves preference without changing match or Undo");
  click(LV_SYMBOL_SETTINGS);click("Display");click("Brightness");auto savesBeforeBrightness=profileMemory.saves;rotate(-1);rotate(-1);rotate(35-static_cast<int>(hardware.brightness()));check(profileMemory.saves==savesBeforeBrightness,"brightness wheel adjustments do not write at every step");tick(50);check(profileMemory.saves==savesBeforeBrightness+1,"settled brightness is saved exactly once");check(identity.brightness()==35,"brightness persists after adjustment settles");click("Back");click("Back");click("Back");
  mtg::DeviceProfile appearanceReboot(&profileMemory);check(appearanceReboot.load()&&appearanceReboot.name()=="ALICE"&&appearanceReboot.faceDesign()==7&&appearanceReboot.brightness()==35,"profile reader restores name, face and brightness together");
