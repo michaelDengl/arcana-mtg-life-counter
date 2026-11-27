@@ -1,8 +1,8 @@
 # Arcana / MTG Life Counter
 
-**Version 0.17.1** - Fixes queued wake input when Life Only and Wake Protection are enabled; includes configurable idle display and experimental Bluetooth LE multiplayer.
+**Version 0.17.2** - About now links to the Nova Dynamics homepage with a scannable website QR code. Includes the v0.17.1 wake-protection fix, configurable idle display and experimental Bluetooth LE multiplayer.
 
-Install [v0.17.1](https://github.com/michaelDengl/arcana-mtg-life-counter/releases/tag/v0.17.1) from the knob's **Update** button after checking for updates over Wi-Fi. Bluetooth remains experimental and has not yet been tested between physical knobs; Wi-Fi remains selectable for multiplayer and firmware updates.
+Install [v0.17.2](https://github.com/michaelDengl/arcana-mtg-life-counter/releases/tag/v0.17.2) from the knob's **Update** button after checking for updates over Wi-Fi. Bluetooth remains experimental. Wi-Fi remains selectable for multiplayer and firmware updates.
 
 A native Windows digital twin of a round 360 x 360 knob display, with the same LVGL interface running on the ESP32-S3 knob. The app supports Commander, Classic, Commander 2HG, Brawl and Limited, with in-memory matches and a touch/rotary interface.
 
@@ -106,15 +106,15 @@ Life, counters, Undo/Redo history and live network membership are session-only. 
 
 Startup offers **New Game**, **Update** and **About**. Update is enabled only after ARCANA finds a newer stable GitHub Release containing the compatible device firmware. It checks once at startup when home Wi-Fi is configured; starting a game stops update networking. Manual checks and Wi-Fi setup are under About > Wi-Fi & Updates.
 
-About shows the installed version, Michael Dengl's contact email, and **MagicTG Kreuzlingen**. Tap the email or group button to display its QR code. The contact links are `michaeldengl@hotmail.com` and the supplied MagicTG Kreuzlingen WhatsApp invitation.
+About shows the installed version, **https://nova-dynamics.ch**, and **MagicTG Kreuzlingen**. Tap the website to display a QR code that opens the Nova Dynamics homepage, or tap the group button for the supplied MagicTG Kreuzlingen WhatsApp invitation.
 
 Wi-Fi setup displays a scannable code containing the temporary ARCANA network name and password. Scan it with your phone, accept Join, then follow the Wi-Fi sign-in page or notification to enter your home 2.4 GHz Wi-Fi details. If the page does not appear, open **http://192.168.4.1**. Setup closes on Back or after three minutes; it does not run during games. [Wi-Fi setup preview](docs/previews/ui-wifi-setup.png).
 
 The display perimeter outside the face is forced to pure black, including during partial redraws and menu transitions. Firmware clears the full 360 x 360 LCD before enabling the backlight so stale pixels cannot remain around the circular face. This uses the existing transfer buffer rather than adding another LVGL masking layer.
 
-| About and contact | MagicTG Kreuzlingen invite | Firmware updates |
-| --- | --- | --- |
-| ![About ARCANA](docs/previews/ui-about.png) | ![WhatsApp invite QR](docs/previews/ui-whatsapp.png) | ![Firmware updates](docs/previews/ui-updates.png) |
+| About and contact | Nova Dynamics website | MagicTG Kreuzlingen invite | Firmware updates |
+| --- | --- | --- | --- |
+| ![About ARCANA](docs/previews/ui-about.png) | ![Nova Dynamics website QR](docs/previews/ui-website.png) | ![WhatsApp invite QR](docs/previews/ui-whatsapp.png) | ![Firmware updates](docs/previews/ui-updates.png) |
 
 
 Wireless installation requires a one-time USB upgrade to the two-slot firmware layout. Your device name/profile storage stays at the same flash address. See the [wireless update setup and release guide](firmware/OTA.md). The owner's device successfully downloaded v0.15.1 from GitHub over Wi-Fi, booted from the second slot, confirmed its boot health and reported the installed release as current. The v0.15.2 QR/captive-portal phone flow still needs a physical phone check.

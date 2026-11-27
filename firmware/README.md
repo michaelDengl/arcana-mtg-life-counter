@@ -1,5 +1,7 @@
 # ARCANA on Guition JC3636K718
 
+**v0.17.2:** About links to **https://nova-dynamics.ch** and displays a QR code for the website. The MagicTG Kreuzlingen group link remains available. This build booted successfully on a physical knob after USB installation. Knobs with the existing OTA layout can install [v0.17.2](https://github.com/michaelDengl/arcana-mtg-life-counter/releases/tag/v0.17.2) wirelessly.
+
 **v0.17.1:** fixes delayed wake-wheel input escaping protection while restoring the Life Only screen; includes v0.17.0 saved idle-display controls and experimental NimBLE multiplayer. Install [v0.17.1](https://github.com/michaelDengl/arcana-mtg-life-counter/releases/tag/v0.17.1) through the knob's **Update** menu. No two-knob BLE test or battery measurement has been performed; use the retained Wi-Fi option with earlier firmware. See [implementation and validation notes](../docs/ble-display-candidate.md).
 
 For existing Wi-Fi knobs select **Multi ARCANA > confirm name > Connection > Wi-Fi** before Host/Join. Updates continue to use Wi-Fi regardless of the game connection setting.
@@ -211,7 +213,7 @@ The power candidate includes address-only, read-only probes for common gauges at
 
 ## Wireless updates and contact information (0.15.x)
 
-The OTA-enabled build adds Update/About below New Game, approved email and MagicTG Kreuzlingen WhatsApp QR links, password-protected phone/browser Wi-Fi setup, and stable GitHub Release checks. Two firmware slots occupy the old application region while NVS and device-profile storage stay at their previous addresses. The guarded installer initializes OTA boot-selection data; it does not erase names or home Wi-Fi settings on routine updates. Earlier non-OTA devices need one USB installation before wireless updates are available.
+The OTA-enabled build adds Update/About below New Game, Nova Dynamics website and MagicTG Kreuzlingen WhatsApp QR links, password-protected phone/browser Wi-Fi setup, and stable GitHub Release checks. Two firmware slots occupy the old application region while NVS and device-profile storage stay at their previous addresses. The guarded installer initializes OTA boot-selection data; it does not erase names or home Wi-Fi settings on routine updates. Earlier non-OTA devices need one USB installation before wireless updates are available.
 
 See [OTA setup, versioning and draft-release workflow](OTA.md). The owner device successfully provisioned home Wi-Fi and installed the published v0.15.1 image from GitHub over Wi-Fi on 2026-11-22. Monitoring confirmed `ota_1` boot, valid image state and a subsequent check reporting the release as current. The owner's accepted power firmware and backups remain archived separately.
 

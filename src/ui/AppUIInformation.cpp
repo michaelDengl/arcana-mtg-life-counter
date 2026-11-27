@@ -7,8 +7,8 @@ namespace mtg {
 using namespace widgets;
 void AppUI::buildInformation(){
  if(view_==View::ContactCode){
-  label(screen_,contactLink_?appInfo::group:"CONTACT MICHAEL",50,34,260,&lv_font_montserrat_14,violet);
-  const std::string link=contactLink_?appInfo::whatsapp:std::string("mailto:")+appInfo::contact;
+  label(screen_,contactLink_?appInfo::group:"NOVA DYNAMICS",50,34,260,&lv_font_montserrat_14,violet);
+  const std::string link=contactLink_?appInfo::whatsapp:appInfo::website;
   auto* quiet=box(screen_,64,55,232,232,0xffffff);lv_obj_set_style_radius(quiet,10,0);
   auto* qr=lv_qrcode_create(quiet);lv_qrcode_set_size(qr,180);lv_obj_set_pos(qr,26,26);
   lv_qrcode_set_dark_color(qr,lv_color_black());lv_qrcode_set_light_color(qr,lv_color_white());
@@ -19,7 +19,7 @@ void AppUI::buildInformation(){
   label(screen_,"A R C A N A",65,57,230,&lv_font_montserrat_20,violet);
   label(screen_,std::string("Created by ")+appInfo::creator,60,90,240,&lv_font_montserrat_14,muted);
   label(screen_,std::string("Version ")+appInfo::version,80,113,200,&lv_font_montserrat_14,ink);
-  button(screen_,appInfo::contact,58,236,244,32,ContactLink,0);
+  button(screen_,appInfo::website,58,236,244,32,ContactLink,0);
   button(screen_,appInfo::group,75,276,210,32,ContactLink,1);
   button(screen_,"Wi-Fi & Updates",115,312,130,27,OpenUpdates);
  }else if(view_==View::Updates){

@@ -46,6 +46,12 @@ Packaging checks the built image's project, embedded version and size, then crea
 
 The included GitHub Actions workflow builds a version tag or an explicitly selected existing tag, uploads reviewable artifacts and prepares a **draft** release. Review the build and release before publishing. Devices ignore drafts and prereleases, and compare the latest stable release numerically against the installed version. Never put Wi-Fi passwords or GitHub credentials in the firmware/repository.
 
+## Version 0.17.2
+
+About shows **https://nova-dynamics.ch** instead of the personal email address. Its button opens a website QR code headed **NOVA DYNAMICS**. The MagicTG Kreuzlingen WhatsApp QR and Back navigation stay available.
+
+This uses the existing application-only `arcana-ota-v1` update path. Earlier knobs with a single application partition need the one-time USB upgrade described above.
+
 ## Version 0.16.3
 
 Adds **Mana Confluence**, the twelfth watch face, to **Gear > Watch Face**. Its bronze and ivory layout includes the five W/U/B/R/G mana glyphs, static stained-glass artwork, life tap/hold, rotary input, both counters, opponent tiles, Undo, battery and lethal warnings. The original eleven designs remain unchanged. The existing three-page selector and saved face/brightness settings continue to work.
